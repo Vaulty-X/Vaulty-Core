@@ -112,10 +112,23 @@ npm install
 cp .env.example .env.local
 
 # Run the dev server
-npm dev
+npm run dev
 ```
 
 The app will be available at `http://localhost:3000`.
+
+### Available Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the local development server on `http://localhost:3000` |
+| `npm run build` | Build the production bundle |
+| `npm run start` | Start the production server (requires a prior `build`) |
+| `npm run lint` | Run Next.js ESLint rules |
+| `npm run type-check` | Run TypeScript compiler check without emitting files |
+| `npm test` | Run the Jest unit test suite |
+| `npm run test:watch` | Run Jest in interactive watch mode |
+| `npm run test:coverage` | Run Jest and generate a coverage report |
 
 ### Environment Variables
 
@@ -125,6 +138,34 @@ See `.env.example` for required variables, which typically include:
 * Backend API base URL
 * Wallet connector configuration
 * Feature flags (e.g. enabling lending/borrowing/investments per phase)
+
+---
+
+## Implementation Status
+
+This table distinguishes what is currently implemented in the codebase from what is planned on the roadmap. Features listed as "Roadmap" exist as scaffolded modules or type stubs only — they are **not functional** and are gated by feature flags.
+
+| Feature | Status | Notes |
+|---|---|---|
+| Next.js app scaffold & routing | ✅ Implemented | App Router, Tailwind, TypeScript |
+| Zustand state store | ✅ Implemented | Wallet, vault, streak, discipline score state |
+| `useWallet` hook | ✅ Implemented | Connect/disconnect flow wired to `walletManager` |
+| `useVault` hook | ✅ Implemented | Create, deposit, withdraw — local state only |
+| API client (`src/lib/api.ts`) | ✅ Implemented | HTTP wrapper for backend fiat deposit/withdrawal endpoints |
+| Stellar wallet connection | 🚧 Placeholder | `connectWallet()` throws "not yet implemented" — requires wallet SDK integration |
+| Soroban contract calls | 🚧 Placeholder | Vault/streak/yield reads and signed transactions not yet implemented |
+| Savings vault UI | 🚧 Roadmap | Feature module scaffolded, UI not built |
+| Saving streaks UI | 🚧 Roadmap | Feature module scaffolded, UI not built |
+| Vault pulse / animations | 🚧 Roadmap | Planned for Phase 1–2 |
+| Achievements & milestones | 🚧 Roadmap | Planned for Phase 2 |
+| Savings calendar | 🚧 Roadmap | Planned for Phase 2 |
+| Smart notifications | 🚧 Roadmap | Planned for Phase 2 |
+| Yield display | 🚧 Roadmap | Planned for Phase 2; on-chain data source required |
+| Lending marketplace UI | 🔒 Gated | Phase 3; requires post-audit & legal review. `NEXT_PUBLIC_ENABLE_LENDING=false` |
+| Borrow against savings UI | 🔒 Gated | Phase 3; requires post-audit & legal review. `NEXT_PUBLIC_ENABLE_BORROWING=false` |
+| Investment portfolios UI | 🔒 Gated | Phase 3; requires post-audit & legal review. `NEXT_PUBLIC_ENABLE_INVESTMENTS=false` |
+| Nigerian bank deposit/withdrawal | 🔒 Gated | Depends on anchor partner backend integration |
+| Discipline Score display | 🚧 Roadmap | Type defined; UI and scoring engine not built |
 
 ---
 

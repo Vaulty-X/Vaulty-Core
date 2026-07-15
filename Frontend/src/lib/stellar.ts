@@ -1,8 +1,12 @@
-import { StellarWallet } from '@stellar/stellar-sdk'
-
 // Stellar wallet connection and transaction utilities
 // This module handles wallet connection and transaction signing
 // All signing happens client-side via the user's wallet
+
+// Placeholder interface — will be replaced with the actual wallet SDK type
+// (e.g. Freighter, Albedo, or a custom Stellar wallet adapter) when integrated.
+interface StellarWallet {
+  getPublicKey(): string
+}
 
 export class WalletManager {
   private wallet: StellarWallet | null = null
