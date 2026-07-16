@@ -31,8 +31,14 @@ export const paymentProcessor = async (job: any) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 };
 
+let workerRegistry: Record<string, any> | null = null;
+
 // Initialize workers (call this in server.ts after Redis is connected)
 export const initializeWorkers = () => {
+  if (workerRegistry) {
+    return workerRegistry;
+  }
+
   const notificationWorker = createWorker(QUEUE_NAMES.NOTIFICATIONS, notificationProcessor);
   const streakWorker = createWorker(QUEUE_NAMES.STREAK_CALCULATION, streakProcessor);
   const emailWorker = createWorker(QUEUE_NAMES.EMAIL, emailProcessor);
@@ -54,5 +60,8 @@ export const initializeWorkers = () => {
     console.log(`Payment job ${job.id} completed`);
   });
 
-  return { notificationWorker, streakWorker, emailWorker, paymentWorker };
+  workerRegistry = { notificationWorker, streakWorker, emailWorker, paymentWorker };
+  return workerRegistry;
 };
+
+export const getBootstrappedWorkers = () => workerRegistry;

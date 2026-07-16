@@ -45,4 +45,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Start application
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "if [ \"$APP_MODE\" = \"worker\" ]; then node dist/server.js --worker; else node dist/server.js; fi"]
