@@ -154,7 +154,14 @@ impl VaultContract {
         );
     }
 
-    /// Withdraw funds from a vault (only after lock period expires)
+    /// Withdraw funds from a vault (only after lock period expires).
+    ///
+    /// # Lock-period boundary rule
+    /// Withdrawal is permitted when the current ledger timestamp is **greater
+    /// than or equal to** `unlock_time`. This means a withdrawal attempted at
+    /// the **exact** `unlock_time` succeeds — the vault is considered unlocked
+    /// at that instant. Any ledger timestamp strictly before `unlock_time` will
+    /// cause this function to panic with "Vault is locked".
     ///
     /// # Arguments
     /// * `vault_id` - The vault to withdraw from
@@ -271,7 +278,16 @@ impl VaultContract {
         metadata.unlock_time
     }
 
-    /// Check if a vault is currently locked
+    /// Check if a vault is currently locked.
+    ///
+    /// Returns `true` only when the vault's status is `Locked` **and** the
+    /// current ledger timestamp is **strictly before** `unlock_time`. Once
+    /// `now >= unlock_time` this returns `false`, meaning the vault is
+    /// considered unlocked at the exact `unlock_time` instant.
+    ///
+    /// # Lock-period boundary rule
+    /// `now >= unlock_time` → returns `false` (unlocked, withdrawal allowed)
+    /// `now <  unlock_time` → returns `true`  (locked, withdrawal denied)
     ///
     /// # Arguments
     /// * `vault_id` - The vault to query

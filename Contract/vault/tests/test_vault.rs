@@ -248,3 +248,63 @@ fn test_get_nonexistent_vault() {
     let fake_vault_id = VaultId(BytesN::from_array(&[1u8; 32]));
     VaultContract::get_vault(&env, &contract_id, &fake_vault_id);
 }
+
+/// Boundary test: withdrawal must succeed at the **exact** unlock timestamp.
+///
+/// `TimeHelper::is_past` uses `now >= unlock_time`, so when the ledger
+/// timestamp equals `unlock_time` the vault is considered unlocked and a
+/// withdrawal must not panic.  This test pins the ledger to precisely
+/// `unlock_time` (initial timestamp 0 + lock_period 86400 = 86400) and
+/// verifies that:
+///   1. `is_locked` returns `false` at that instant, and
+///   2. `withdraw` completes successfully and reduces the balance correctly.
+#[test]
+fn test_withdraw_at_exact_unlock_time() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register_contract(None, VaultContract);
+
+    let owner = Address::generate(&env);
+    let asset_code = BytesN::from_array(&[0u8; 32]);
+    // Ledger starts at timestamp 0; unlock_time will be 0 + 86400 = 86400.
+    let lock_period = 86400u64;
+
+    let vault_id = VaultContract::create_vault(
+        &env,
+        &contract_id,
+        &owner,
+        &asset_code,
+        &None,
+        &lock_period,
+    );
+
+    // Deposit funds so there is something to withdraw.
+    VaultContract::deposit(&env, &contract_id, &vault_id, &owner, &1000i128);
+
+    // Advance the ledger to exactly the unlock timestamp (the boundary).
+    env.ledger().set(soroban_sdk::LedgerInfo {
+        timestamp: 86400, // == unlock_time: boundary must be treated as unlocked
+        protocol_version: 20,
+        sequence_number: 1234,
+        network_id: Default::default(),
+        base_reserve: 10,
+        min_persistent_entry_ttl: 10,
+        min_temp_entry_ttl: 10,
+        max_entry_ttl: 31104000,
+    });
+
+    // is_locked must return false at exactly unlock_time.
+    assert!(
+        !VaultContract::is_locked(&env, &contract_id, &vault_id),
+        "Vault should be unlocked at exactly unlock_time"
+    );
+
+    // Withdrawal at the exact boundary must succeed.
+    let to = Address::generate(&env);
+    VaultContract::withdraw(&env, &contract_id, &vault_id, &to, &500i128);
+
+    // Balance should reflect the partial withdrawal.
+    let balance = VaultContract::get_balance(&env, &contract_id, &vault_id);
+    assert_eq!(balance, 500, "Balance should be 500 after withdrawing 500 from 1000");
+}
