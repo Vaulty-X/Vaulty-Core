@@ -17,7 +17,6 @@ const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 60;
 
 export class AuthService {
   async register(data: RegisterInput) {
-    // Check if user already exists
     const existingUser = await userRepository.findByEmail(data.email);
     if (existingUser) {
       throw new AppError('User with this email already exists', 409);
@@ -30,10 +29,8 @@ export class AuthService {
       }
     }
 
-    // Hash password
     const passwordHash = await hashPassword(data.password);
 
-    // Create user
     const user = await userRepository.create({
       email: data.email,
       passwordHash,
@@ -42,7 +39,6 @@ export class AuthService {
       phoneNumber: data.phoneNumber,
     });
 
-    // Generate email verification token
     const verificationToken = generateSecureToken();
     const verificationTokenHash = hashToken(verificationToken);
     const expiresAt = generateTokenExpiry(EMAIL_VERIFICATION_TOKEN_EXPIRY_MINUTES);
@@ -55,25 +51,20 @@ export class AuthService {
       expiresAt: expiresAt.toISOString(),
     });
 
-    return {
-      user,
-    };
+    return { user };
   }
 
   async login(data: LoginInput) {
-    // Find user by email
     const user = await userRepository.findByEmail(data.email);
     if (!user) {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Verify password
     const isValidPassword = await comparePassword(data.password, user.passwordHash);
     if (!isValidPassword) {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Update last login
     await userRepository.update(user.id, { lastLoginAt: new Date() });
 
     // Opportunistically clean up expired tokens on login; fire-and-forget so
@@ -82,17 +73,16 @@ export class AuthService {
       console.error('cleanupExpiredTokens failed:', err);
     });
 
-    // Generate tokens
     const tokenPayload: TokenPayload = {
       userId: user.id,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion,
     };
 
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    // Return user without sensitive data
     const { passwordHash, ...userWithoutPassword } = user;
 
     return {
@@ -108,14 +98,18 @@ export class AuthService {
       const user = await userRepository.findById(payload.userId);
 
       if (!user) {
-        throw new AppError('User not found', 404);
+        throw new AppError('Invalid or expired refresh token', 401);
       }
 
-      // Generate new tokens
+      if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+        throw new AppError('Invalid or expired refresh token', 401);
+      }
+
       const tokenPayload: TokenPayload = {
         userId: user.id,
         email: user.email,
         role: user.role,
+        tokenVersion: user.tokenVersion,
       };
 
       const newAccessToken = generateAccessToken(tokenPayload);
@@ -126,6 +120,7 @@ export class AuthService {
         refreshToken: newRefreshToken,
       };
     } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError('Invalid or expired refresh token', 401);
     }
   }
@@ -133,11 +128,9 @@ export class AuthService {
   async forgotPassword(data: ForgotPasswordInput) {
     const user = await userRepository.findByEmail(data.email);
     if (!user) {
-      // Don't reveal if user exists for security
       return { message: 'If the email exists, a reset link has been sent' };
     }
 
-    // Generate reset token
     const resetToken = generateSecureToken();
     const resetTokenHash = hashToken(resetToken);
     const expiresAt = generateTokenExpiry(PASSWORD_RESET_TOKEN_EXPIRY_MINUTES);
@@ -154,57 +147,30 @@ export class AuthService {
   }
 
   async resetPassword(data: ResetPasswordInput) {
-    // Find valid token
     const tokenHash = hashToken(data.token);
-    const tokenRecord = await userRepository.findValidPasswordResetToken(tokenHash);
-    if (!tokenRecord) {
+    const token = await userRepository.consumePasswordResetToken(tokenHash);
+    if (!token) {
       throw new AppError('Invalid or expired reset token', 400);
     }
 
-    if (tokenRecord.used) {
-      throw new AppError('Reset token has already been used', 400);
-    }
-
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new AppError('Reset token has expired', 400);
-    }
-
-    // Hash new password
     const passwordHash = await hashPassword(data.password);
-
-    // Update user password
-    await userRepository.update(tokenRecord.userId, { passwordHash });
-
-    // Invalidate token
-    await userRepository.invalidatePasswordResetToken(tokenHash);
+    await userRepository.update(token.userId, { passwordHash });
+    await userRepository.incrementTokenVersion(token.userId);
 
     return { message: 'Password has been reset successfully' };
   }
 
   async verifyEmail(data: VerifyEmailInput) {
-    // Find valid token
     const tokenHash = hashToken(data.token);
-    const tokenRecord = await userRepository.findValidEmailVerificationToken(tokenHash);
-    if (!tokenRecord) {
+    const token = await userRepository.consumeEmailVerificationToken(tokenHash);
+    if (!token) {
       throw new AppError('Invalid or expired verification token', 400);
     }
 
-    if (tokenRecord.used) {
-      throw new AppError('Verification token has already been used', 400);
-    }
-
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new AppError('Verification token has expired', 400);
-    }
-
-    // Update user as verified
-    await userRepository.update(tokenRecord.userId, {
+    await userRepository.update(token.userId, {
       isEmailVerified: true,
       emailVerifiedAt: new Date(),
     });
-
-    // Invalidate token
-    await userRepository.invalidateEmailVerificationToken(tokenHash);
 
     return { message: 'Email has been verified successfully' };
   }

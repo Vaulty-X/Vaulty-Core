@@ -16,6 +16,7 @@ export class UserRepository {
         createdAt: true,
         updatedAt: true,
         lastLoginAt: true,
+        tokenVersion: true,
       },
     });
   }
@@ -78,7 +79,15 @@ export class UserRepository {
         createdAt: true,
         updatedAt: true,
         lastLoginAt: true,
+        tokenVersion: true,
       },
+    });
+  }
+
+  async incrementTokenVersion(id: string) {
+    return prisma.user.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } },
     });
   }
 
@@ -92,17 +101,19 @@ export class UserRepository {
     });
   }
 
-  async findValidPasswordResetToken(tokenHash: string) {
+  async consumePasswordResetToken(tokenHash: string) {
+    const { count } = await prisma.passwordResetToken.updateMany({
+      where: {
+        tokenHash,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      data: { used: true },
+    });
+    if (count === 0) return null;
     return prisma.passwordResetToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
-    });
-  }
-
-  async invalidatePasswordResetToken(tokenHash: string) {
-    return prisma.passwordResetToken.update({
-      where: { tokenHash },
-      data: { used: true },
+      select: { userId: true },
     });
   }
 
@@ -116,17 +127,19 @@ export class UserRepository {
     });
   }
 
-  async findValidEmailVerificationToken(tokenHash: string) {
+  async consumeEmailVerificationToken(tokenHash: string) {
+    const { count } = await prisma.emailVerificationToken.updateMany({
+      where: {
+        tokenHash,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      data: { used: true },
+    });
+    if (count === 0) return null;
     return prisma.emailVerificationToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
-    });
-  }
-
-  async invalidateEmailVerificationToken(tokenHash: string) {
-    return prisma.emailVerificationToken.update({
-      where: { tokenHash },
-      data: { used: true },
+      select: { userId: true },
     });
   }
 

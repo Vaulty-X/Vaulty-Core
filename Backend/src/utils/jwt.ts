@@ -5,6 +5,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   role: string;
+  tokenVersion?: number;
 }
 
 export const generateAccessToken = (payload: TokenPayload): string => {

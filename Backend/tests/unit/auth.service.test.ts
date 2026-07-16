@@ -8,15 +8,15 @@ jest.mock('../../src/repositories/user.repository', () => ({
   userRepository: {
     findByEmail: jest.fn(),
     findByPhoneNumber: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    incrementTokenVersion: jest.fn(),
     createEmailVerificationToken: jest.fn(),
-    findValidEmailVerificationToken: jest.fn(),
-    invalidateEmailVerificationToken: jest.fn(),
+    consumeEmailVerificationToken: jest.fn(),
     invalidateUnusedEmailVerificationTokens: jest.fn(),
     createPasswordResetToken: jest.fn(),
-    findValidPasswordResetToken: jest.fn(),
-    invalidatePasswordResetToken: jest.fn(),
+    consumePasswordResetToken: jest.fn(),
   },
 }));
 
@@ -87,33 +87,23 @@ describe('AuthService token secrecy', () => {
   });
 
   it('rejects expired password reset tokens', async () => {
-    mockUserRepository.findValidPasswordResetToken.mockResolvedValue({
-      userId: user.id,
-      used: false,
-      expiresAt: new Date(Date.now() - 1000),
-    } as never);
+    mockUserRepository.consumePasswordResetToken.mockResolvedValue(null);
 
     await expect(authService.resetPassword({ token: 'expired-token', password: 'Password2' })).rejects.toThrow(
-      new AppError('Reset token has expired', 400)
+      new AppError('Invalid or expired reset token', 400)
     );
 
     expect(mockUserRepository.update).not.toHaveBeenCalled();
-    expect(mockUserRepository.invalidatePasswordResetToken).not.toHaveBeenCalled();
   });
 
-  it('enforces one-time use for email verification tokens', async () => {
-    mockUserRepository.findValidEmailVerificationToken.mockResolvedValue({
-      userId: user.id,
-      used: true,
-      expiresAt: new Date(Date.now() + 1000),
-    } as never);
+  it('rejects already-used email verification tokens', async () => {
+    mockUserRepository.consumeEmailVerificationToken.mockResolvedValue(null);
 
     await expect(authService.verifyEmail({ token: 'used-token' })).rejects.toThrow(
-      new AppError('Verification token has already been used', 400)
+      new AppError('Invalid or expired verification token', 400)
     );
 
     expect(mockUserRepository.update).not.toHaveBeenCalled();
-    expect(mockUserRepository.invalidateEmailVerificationToken).not.toHaveBeenCalled();
   });
 
   it('resends verification by invalidating older unused tokens and queuing a new hashed token', async () => {
