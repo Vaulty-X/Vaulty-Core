@@ -15,7 +15,7 @@ The backend is responsible for:
 * Savings vault management
 * Transaction processing
 * Nigerian bank integrations
-* Fiat-to-USDT conversion workflows
+* Fiat-to-USDC conversion workflows
 * Lending and borrowing services
 * Investment management
 * Reward and streak calculations
@@ -97,7 +97,7 @@ Responsibilities:
 
 * Receive NGN deposits
 * Verify payments
-* Convert NGN to USDT
+* Convert NGN to USDC
 * Transfer assets to Stellar wallets
 * Process withdrawals back to bank accounts
 

@@ -183,7 +183,7 @@ User
 Create Vault
  │
  ▼
-Deposit USDT
+Deposit USDC
  │
  ▼
 Vault Contract
