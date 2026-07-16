@@ -1,46 +1,170 @@
-import { useAppStore } from '@/stores'
-import { Vault } from '@/types'
+// ─────────────────────────────────────────────────────────────────────────────
+// useVault – server-state hooks for vault data
+//
+// All vault data is owned by React Query.  Zustand is used only to read the
+// connected wallet's public key (a UI concern), never to store vault balances.
+//
+// Cache invalidation strategy:
+//  • Mutations (create / deposit / withdraw) invalidate the vaults query for
+//    the current public key so the list and individual vault are refreshed
+//    from the server immediately after a successful transaction.
+//  • The wallet hook invalidates everything when the wallet changes (see
+//    hooks/useWallet.ts).
+// ─────────────────────────────────────────────────────────────────────────────
 
-export function useVault() {
-  const { vaults, setVaults, addVault, updateVault } = useAppStore()
-  
-  const createVault = async (vaultData: Omit<Vault, 'id' | 'deposits' | 'withdrawals'>) => {
-    // This will call the Soroban contract to create a vault
-    // For now, just add to local state
-    const newVault: Vault = {
-      ...vaultData,
-      id: crypto.randomUUID(),
-      deposits: [],
-      withdrawals: [],
-    }
-    
-    addVault(newVault)
-    return newVault
-  }
-  
-  const depositToVault = async (vaultId: string, amount: number) => {
-    // This will trigger a wallet-signed transaction to deposit to the vault
-    // For now, just update local state
-    updateVault(vaultId, {
-      currentBalance: (vaults.find(v => v.id === vaultId)?.currentBalance || 0) + amount,
-    })
-  }
-  
-  const withdrawFromVault = async (vaultId: string, amount: number) => {
-    // This will trigger a wallet-signed transaction to withdraw from the vault
-    // For now, just update local state
-    const vault = vaults.find(v => v.id === vaultId)
-    if (vault && vault.currentBalance >= amount) {
-      updateVault(vaultId, {
-        currentBalance: vault.currentBalance - amount,
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryResult,
+  type UseMutationResult,
+} from '@tanstack/react-query'
+import {
+  fetchVaults,
+  fetchVault,
+  createVault as apiCreateVault,
+  depositToVault as apiDeposit,
+  withdrawFromVault as apiWithdraw,
+  type CreateVaultPayload,
+  type DepositPayload,
+  type WithdrawPayload,
+} from '@/lib/api'
+import { useAppStore, selectPublicKey } from '@/stores'
+import { queryKeys, type Vault, type Deposit, type Withdrawal } from '@/types'
+
+// ── Vault list query ──────────────────────────────────────────────────────────
+
+/**
+ * Returns the list of vaults for the currently connected wallet.
+ * The query is disabled (and returns an empty array) when no wallet is
+ * connected, preventing unnecessary network requests.
+ */
+export function useVaults(): UseQueryResult<Vault[], Error> {
+  const publicKey = useAppStore(selectPublicKey)
+
+  return useQuery({
+    queryKey: queryKeys.vaults(publicKey ?? ''),
+    queryFn: () => fetchVaults(publicKey!),
+    // Only run when a wallet is connected.
+    enabled: !!publicKey,
+    // Financial data – keep fresh.
+    staleTime: 30_000,          // 30 s
+    gcTime: 5 * 60 * 1000,     // 5 min
+    // Surface backend errors to the component.
+    retry: 2,
+  })
+}
+
+// ── Single vault query ────────────────────────────────────────────────────────
+
+/**
+ * Returns a single vault by ID.  Disabled when no wallet is connected or no
+ * vault ID is provided.
+ */
+export function useVaultById(
+  vaultId: string | null
+): UseQueryResult<Vault, Error> {
+  const publicKey = useAppStore(selectPublicKey)
+
+  return useQuery({
+    queryKey: queryKeys.vault(publicKey ?? '', vaultId ?? ''),
+    queryFn: () => fetchVault(publicKey!, vaultId!),
+    enabled: !!publicKey && !!vaultId,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+  })
+}
+
+// ── Create vault mutation ─────────────────────────────────────────────────────
+
+/**
+ * Returns a mutation for creating a new vault.
+ * On success the vault list cache is invalidated so the UI reflects the new
+ * vault without requiring a manual refresh.
+ */
+export function useCreateVault(): UseMutationResult<
+  Vault,
+  Error,
+  CreateVaultPayload
+> {
+  const queryClient = useQueryClient()
+  const publicKey = useAppStore(selectPublicKey)
+
+  return useMutation({
+    mutationFn: (payload: CreateVaultPayload) => {
+      if (!publicKey) throw new Error('Wallet not connected')
+      return apiCreateVault(publicKey, payload)
+    },
+    onSuccess: () => {
+      // Invalidate the vault list so it refreshes from the server.
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vaults(publicKey ?? ''),
       })
-    }
-  }
-  
-  return {
-    vaults,
-    createVault,
-    depositToVault,
-    withdrawFromVault,
-  }
+    },
+  })
+}
+
+// ── Deposit mutation ──────────────────────────────────────────────────────────
+
+interface DepositArgs {
+  vaultId: string
+  payload: DepositPayload
+}
+
+/**
+ * Returns a mutation for recording a confirmed on-chain deposit.
+ * Invalidates both the vault list and the individual vault cache entry.
+ */
+export function useDeposit(): UseMutationResult<Deposit, Error, DepositArgs> {
+  const queryClient = useQueryClient()
+  const publicKey = useAppStore(selectPublicKey)
+
+  return useMutation({
+    mutationFn: ({ vaultId, payload }: DepositArgs) => {
+      if (!publicKey) throw new Error('Wallet not connected')
+      return apiDeposit(publicKey, vaultId, payload)
+    },
+    onSuccess: (_data, { vaultId }) => {
+      const key = publicKey ?? ''
+      queryClient.invalidateQueries({ queryKey: queryKeys.vaults(key) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.vault(key, vaultId) })
+      // A deposit may update the streak and discipline score too.
+      queryClient.invalidateQueries({ queryKey: queryKeys.streak(key) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.disciplineScore(key) })
+    },
+  })
+}
+
+// ── Withdrawal mutation ───────────────────────────────────────────────────────
+
+interface WithdrawArgs {
+  vaultId: string
+  payload: WithdrawPayload
+}
+
+/**
+ * Returns a mutation for recording a confirmed on-chain withdrawal.
+ * Invalidates both the vault list and the individual vault cache entry.
+ */
+export function useWithdraw(): UseMutationResult<
+  Withdrawal,
+  Error,
+  WithdrawArgs
+> {
+  const queryClient = useQueryClient()
+  const publicKey = useAppStore(selectPublicKey)
+
+  return useMutation({
+    mutationFn: ({ vaultId, payload }: WithdrawArgs) => {
+      if (!publicKey) throw new Error('Wallet not connected')
+      return apiWithdraw(publicKey, vaultId, payload)
+    },
+    onSuccess: (_data, { vaultId }) => {
+      const key = publicKey ?? ''
+      queryClient.invalidateQueries({ queryKey: queryKeys.vaults(key) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.vault(key, vaultId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.disciplineScore(key) })
+    },
+  })
 }
