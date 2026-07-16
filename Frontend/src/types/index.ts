@@ -84,3 +84,81 @@ export interface Investment {
   expectedReturn: number
   currentValue: number
 }
+
+// Payment flow types
+
+export type PaymentStatus =
+  | 'pending'
+  | 'awaiting_bank_transfer'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'expired'
+
+export type PaymentFlow = 'deposit' | 'withdrawal'
+
+export interface BankAccount {
+  id: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  bankCode: string
+}
+
+export interface FeeInfo {
+  platformFee: number
+  networkFee: number
+  totalFee: number
+  currency: string
+}
+
+export interface ConversionInfo {
+  inputAmount: number
+  inputCurrency: string
+  outputAmount: number
+  outputCurrency: string
+  exchangeRate: number
+}
+
+export interface PaymentInstructions {
+  bankName: string
+  accountNumber: string
+  accountName: string
+  reference: string
+  amount: number
+  currency: string
+  expiresAt: string
+}
+
+export interface FundingOrder {
+  id: string
+  flow: 'deposit'
+  vaultId: string
+  amount: number
+  bankAccountId: string
+  status: PaymentStatus
+  paymentInstructions: PaymentInstructions | null
+  fees: FeeInfo | null
+  conversion: ConversionInfo | null
+  failureReason: string | null
+  idempotencyKey: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WithdrawalOrder {
+  id: string
+  flow: 'withdrawal'
+  vaultId: string
+  amount: number
+  bankAccountId: string
+  status: PaymentStatus
+  fees: FeeInfo | null
+  conversion: ConversionInfo | null
+  failureReason: string | null
+  idempotencyKey: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type PaymentOrder = FundingOrder | WithdrawalOrder

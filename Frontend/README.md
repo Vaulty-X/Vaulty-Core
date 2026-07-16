@@ -75,6 +75,33 @@ frontend/
 * **`investments/`** — Portfolio allocation UI (Conservative / Balanced / Growth). Gated behind the regional legal review described in the root README before public launch.
 * **`notifications/`** — In-app notification center for streak reminders, goal proximity alerts, and milestone congratulations.
 
+### Payment Flow
+
+The frontend manages fiat deposit and withdrawal flows through the backend API client (`src/lib/api.ts`). The flow is:
+
+1. **Bank Account Selection** — Users select a linked Nigerian bank account from their stored accounts.
+2. **Amount Input & Validation** — Amounts are validated against min/max bounds and vault balance (for withdrawals).
+3. **Order Initiation** — `apiClient.initiateDeposit()` / `apiClient.initiateWithdrawal()` sends the request with an idempotency key.
+4. **Payment Instructions** — On deposit, the backend returns bank transfer details (account number, reference, amount, expiry).
+5. **Status Polling** — The `usePaymentStatus` hook polls `/deposits/:id/status` and `/withdrawals/:id/status` every 5 seconds for non-terminal orders.
+6. **Receipts & Fees** — Fee breakdowns (platform fee, network fee) and conversion details (exchange rate, output amount) are displayed at each step.
+7. **Retries** — Failed or expired orders can be retried via dedicated retry endpoints. Retries are idempotent.
+8. **Persistence** — Active payment orders are persisted to `localStorage` via Zustand's persist middleware, so they survive page reloads.
+
+**Status flow:** `pending` → `awaiting_bank_transfer` → `processing` → `completed` (or `failed` / `expired`).
+
+**Key files:**
+- `src/types/index.ts` — `PaymentStatus`, `FundingOrder`, `WithdrawalOrder`, `FeeInfo`, `ConversionInfo`, `PaymentInstructions`
+- `src/lib/api.ts` — `ApiClient` with idempotent deposit/withdrawal/status/retry methods
+- `src/stores/index.ts` — Zustand store with payment order state and persistence
+- `src/hooks/usePaymentStatus.ts` — Polling hook for active orders
+- `src/hooks/useVault.ts` — `initiateFunding`, `initiateWithdrawal`, `retryFunding`, `retryWithdrawal`
+- `src/components/FundingFlow.tsx` — Deposit orchestration UI
+- `src/components/WithdrawalFlow.tsx` — Withdrawal orchestration UI
+- `src/components/BankAccountSelector.tsx` — Bank account dropdown
+- `src/components/PaymentInstructions.tsx` — Payment details display
+- `src/components/PaymentStatusTracker.tsx` — Status badge with retry button
+
 ---
 
 ## Key UI/UX Elements
