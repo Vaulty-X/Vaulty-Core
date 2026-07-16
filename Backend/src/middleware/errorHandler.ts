@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/AppError';
+import { redact, redactError } from '../utils/redact';
 
 export const errorHandler = (
   err: Error | AppError,
@@ -7,21 +8,24 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  void req;
+  void next;
+
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
-      message: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      message: redact(err.message),
+      ...(process.env.NODE_ENV === 'development' && { stack: redact(err.stack || '') }),
     });
     return;
   }
 
   // Handle unexpected errors
-  console.error('Unexpected error:', err);
+  console.error('Unexpected error:', redactError(err));
   res.status(500).json({
     success: false,
     message: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(process.env.NODE_ENV === 'development' && { stack: redact(err.stack || '') }),
   });
 };
 

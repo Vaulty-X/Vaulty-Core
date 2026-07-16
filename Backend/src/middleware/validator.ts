@@ -7,12 +7,7 @@ export const validate = (schema: ZodSchema) => {
     try {
       schema.parse(req.body);
       next();
-    } catch (error: any) {
-      const errors = error.errors?.map((e: any) => ({
-        field: e.path.join('.'),
-        message: e.message,
-      }));
-
+    } catch {
       next(new AppError('Validation failed', 400));
     }
   };

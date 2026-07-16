@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { config } from './index';
+import { redactError } from '../utils/redact';
 
 const redis = new Redis({
   host: config.redis.host,
@@ -14,7 +15,7 @@ redis.on('connect', () => {
 });
 
 redis.on('error', (err) => {
-  console.error('❌ Redis connection error:', err);
+  console.error('❌ Redis connection error:', redactError(err));
 });
 
 export { redis };

@@ -24,6 +24,10 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
+# Ensures src/config validates strictly and refuses to start with missing or
+# default secrets/URLs - real values must be injected at deploy time.
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package*.json ./
 

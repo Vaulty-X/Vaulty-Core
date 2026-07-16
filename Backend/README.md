@@ -612,14 +612,22 @@ npm install
 cp .env.example .env
 ```
 
-Update the environment variables with your database, Stellar, and third-party integration credentials.
+Update the environment variables with your database, Stellar, Redis, and third-party integration credentials.
+
+### Configuration requirements by environment
+
+- Development: local defaults are allowed for convenience, but the app still warns if values are malformed. Use `NODE_ENV=development` and the built-in localhost defaults if you are just running the service locally.
+- Testnet: set `NODE_ENV=development` or `test`, `STELLAR_NETWORK=testnet`, `STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org`, and provide real values for `DATABASE_URL`, `REDIS_HOST`, `REDIS_PORT`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and `CORS_ORIGIN`.
+- Production: the app exits immediately if any required secret, URL, or infrastructure setting is missing, left at a localhost/default value, or set to a known insecure placeholder. `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` must be unique, non-placeholder values that are at least 32 characters long. `REDIS_PASSWORD` is required, `CORS_ORIGIN` must be explicit and cannot be `*`, and `STELLAR_NETWORK`/`STELLAR_HORIZON_URL` must match the intended network.
 
 **Required environment variables:**
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_HOST` - Redis server host
 - `REDIS_PORT` - Redis server port
+- `REDIS_PASSWORD` - Redis authentication password (required in production)
 - `JWT_ACCESS_SECRET` - Secret for access token signing
 - `JWT_REFRESH_SECRET` - Secret for refresh token signing
+- `CORS_ORIGIN` - Allowed CORS origins (comma-separated list; do not use `*` in production)
 - `STELLAR_NETWORK` - Stellar network (testnet/mainnet)
 - `STELLAR_HORIZON_URL` - Stellar Horizon server URL
 
