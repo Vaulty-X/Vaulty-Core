@@ -258,6 +258,42 @@ Each module follows a layered architecture with controllers, services, repositor
 
 ---
 
+# Deployment Modes
+
+The backend now supports separate API and worker deployment modes.
+
+## API mode
+
+Use this when you want the Express server and health endpoint.
+
+```bash
+docker compose up app
+# or locally
+npm run dev
+```
+
+## Worker mode
+
+Use this when you want BullMQ workers to process background jobs such as notifications, streak calculations, emails, and payments.
+
+```bash
+docker compose up worker
+# or locally
+npm run dev -- --worker
+```
+
+## Health and readiness
+
+The health endpoint reports the status of Prisma, Redis, and worker bootstrapping:
+
+```bash
+curl http://localhost:3000/health
+```
+
+A healthy deployment should report `ready: true` and `checks.workers.status: "ok"` when workers have been bootstrapped successfully.
+
+---
+
 # Authentication API
 
 Base URL: `http://localhost:3000/api/v1/auth`

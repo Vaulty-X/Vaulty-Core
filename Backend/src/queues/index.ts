@@ -17,11 +17,24 @@ const connectionOptions = {
   maxRetriesPerRequest: 3,
 };
 
-// Create queues
-export const notificationQueue = new Queue(QUEUE_NAMES.NOTIFICATIONS, { connection: connectionOptions });
-export const streakQueue = new Queue(QUEUE_NAMES.STREAK_CALCULATION, { connection: connectionOptions });
-export const emailQueue = new Queue(QUEUE_NAMES.EMAIL, { connection: connectionOptions });
-export const paymentQueue = new Queue(QUEUE_NAMES.PAYMENT_PROCESSING, { connection: connectionOptions });
+const queues = new Map<string, Queue>();
+const workers: Worker[] = [];
+
+const getQueue = (queueName: string): Queue => {
+  const cachedQueue = queues.get(queueName);
+  if (cachedQueue) {
+    return cachedQueue;
+  }
+
+  const queue = new Queue(queueName, { connection: connectionOptions });
+  queues.set(queueName, queue);
+  return queue;
+};
+
+export const getNotificationQueue = () => getQueue(QUEUE_NAMES.NOTIFICATIONS);
+export const getStreakQueue = () => getQueue(QUEUE_NAMES.STREAK_CALCULATION);
+export const getEmailQueue = () => getQueue(QUEUE_NAMES.EMAIL);
+export const getPaymentQueue = () => getQueue(QUEUE_NAMES.PAYMENT_PROCESSING);
 
 export type VerificationEmailJob = {
   type: 'verification';
@@ -47,12 +60,14 @@ const emailJobOptions = {
   removeOnFail: 100,
 };
 
-export const queueVerificationEmail = (data: Omit<VerificationEmailJob, 'type'>) => {
-  return emailQueue.add('send-verification-email', { type: 'verification', ...data }, emailJobOptions);
+export const queueVerificationEmail = async (data: Omit<VerificationEmailJob, 'type'>) => {
+  const queue = getEmailQueue();
+  return queue.add('send-verification-email', { type: 'verification', ...data }, emailJobOptions);
 };
 
-export const queuePasswordResetEmail = (data: Omit<PasswordResetEmailJob, 'type'>) => {
-  return emailQueue.add('send-password-reset-email', { type: 'password-reset', ...data }, emailJobOptions);
+export const queuePasswordResetEmail = async (data: Omit<PasswordResetEmailJob, 'type'>) => {
+  const queue = getEmailQueue();
+  return queue.add('send-password-reset-email', { type: 'password-reset', ...data }, emailJobOptions);
 };
 
 // Worker factory function
@@ -61,9 +76,21 @@ export const createWorker = (
   processor: (job: any) => Promise<void>,
   options?: any
 ): Worker => {
-  return new Worker(queueName, processor, {
+  const worker = new Worker(queueName, processor, {
     connection: connectionOptions,
     concurrency: 5,
     ...options,
   });
+
+  workers.push(worker);
+  return worker;
 };
+
+export const closeQueueConnections = async (): Promise<void> => {
+  const closeTasks = [...workers, ...queues.values()].map((resource) => resource.close());
+  await Promise.allSettled(closeTasks);
+  workers.length = 0;
+  queues.clear();
+};
+
+export const getBootstrappedWorkers = () => workers;
