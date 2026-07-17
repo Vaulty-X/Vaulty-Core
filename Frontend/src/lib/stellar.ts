@@ -4,7 +4,7 @@
 
 // StellarWallet type is a placeholder for the Stellar-compatible wallet SDK
 // that will be wired up in Phase 1 implementation.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line -- @typescript-eslint/no-explicit-any (plugin not installed)
 type StellarWallet = any
 
 export class WalletManager {
