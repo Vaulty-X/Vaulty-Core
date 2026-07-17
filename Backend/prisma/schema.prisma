@@ -15,6 +15,15 @@ enum UserRole {
   ADMIN
 }
 
+enum SessionRevocationReason {
+  LOGOUT
+  LOGOUT_ALL
+  REUSE_DETECTED
+  PASSWORD_RESET
+  EXPIRED
+  ADMIN_REVOKED
+}
+
 enum TransactionStatus {
   PENDING
   COMPLETED
@@ -63,7 +72,8 @@ model User {
   transactions      Transaction[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
-  
+  refreshSessions       RefreshSession[]
+
   @@map("users")
 }
 
@@ -149,11 +159,33 @@ model EmailVerificationToken {
   expiresAt         DateTime
   used              Boolean   @default(false)
   createdAt         DateTime  @default(now())
-  
+
   // Relations
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("email_verification_tokens")
+}
+
+model RefreshSession {
+  id                String                @id @default(cuid())
+  userId            String
+  tokenHash         String                @unique
+  familyId          String
+  device            String?
+  ipAddress         String?
+  userAgent         String?
+  issuedAt          DateTime              @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  revocationReason  SessionRevocationReason?
+
+  // Relations
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 // Placeholder models for future phases

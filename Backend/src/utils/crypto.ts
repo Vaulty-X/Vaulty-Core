@@ -24,3 +24,11 @@ export const generateTokenExpiry = (minutes: number): Date => {
   expiry.setMinutes(expiry.getMinutes() + minutes);
   return expiry;
 };
+
+export const generateSessionId = (): string => {
+  return crypto.randomBytes(16).toString('hex');
+};
+
+export const generateFamilyId = (): string => {
+  return crypto.randomBytes(16).toString('hex');
+};

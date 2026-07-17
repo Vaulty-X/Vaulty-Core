@@ -217,6 +217,7 @@ export const config = {
     refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },
 
+
   cors: {
     origin: corsOrigins,
   },
@@ -225,4 +226,21 @@ export const config = {
     network: stellarNetwork,
     horizonUrl: stellarHorizonUrl,
   },
+};
+
+/**
+ * Parses the configured refresh-token expiry into milliseconds so the
+ * persisted session record can store an absolute expiry timestamp. Supports
+ * the same unit suffixes used by jsonwebtoken (s, m, h, d). If parsing fails
+ * the default of 7 days is used.
+ */
+export const parseRefreshTokenExpiryMs = (): number => {
+  const raw = config.jwt.refreshTokenExpiry;
+  const match = /^(\d+)\s*([smhd])$/.exec(raw.trim());
+  if (!match) {
+    return 7 * 24 * 60 * 60 * 1000;
+  }
+  const value = Number(match[1]);
+  const unitMs = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const;
+  return value * unitMs[match[2] as 's' | 'm' | 'h' | 'd'];
 };
