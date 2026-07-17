@@ -26,6 +26,9 @@ services:
       - CORS_ORIGIN=http://localhost:3000
       - STELLAR_NETWORK=testnet
       - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - ANCHOR_WEBHOOK_SECRET=dev-webhook-secret
+      - ANCHOR_API_KEY=dev-api-key
+      - ANCHOR_BASE_URL=https://api.anchor.test
     depends_on:
       - postgres
       - redis
@@ -55,6 +58,9 @@ services:
       - CORS_ORIGIN=http://localhost:3000
       - STELLAR_NETWORK=testnet
       - STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+      - ANCHOR_WEBHOOK_SECRET=dev-webhook-secret
+      - ANCHOR_API_KEY=dev-api-key
+      - ANCHOR_BASE_URL=https://api.anchor.test
     depends_on:
       - postgres
       - redis
