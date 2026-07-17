@@ -226,6 +226,12 @@ export const config = {
     network: stellarNetwork,
     horizonUrl: stellarHorizonUrl,
   },
+
+  anchor: {
+    webhookSecret: process.env.ANCHOR_WEBHOOK_SECRET || 'dev-webhook-secret',
+    apiKey: process.env.ANCHOR_API_KEY || 'dev-api-key',
+    baseUrl: process.env.ANCHOR_BASE_URL || 'https://api.anchor.test',
+  },
 };
 
 /**

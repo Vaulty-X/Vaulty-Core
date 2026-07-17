@@ -54,10 +54,30 @@ export type PasswordResetEmailJob = {
 
 export type EmailJobData = VerificationEmailJob | PasswordResetEmailJob;
 
+export type PaymentProcessJob = {
+  paymentId: string;
+  type: 'POLL_STATUS';
+};
+
 const emailJobOptions = {
   attempts: 3,
   removeOnComplete: true,
   removeOnFail: 100,
+};
+
+const paymentJobOptions = {
+  attempts: 5,
+  backoff: {
+    type: 'exponential',
+    delay: 5000,
+  },
+  removeOnComplete: true,
+  removeOnFail: false,
+};
+
+export const queuePaymentProcess = async (data: PaymentProcessJob) => {
+  const queue = getPaymentQueue();
+  return queue.add('payment-process', data, paymentJobOptions);
 };
 
 export const queueVerificationEmail = async (data: Omit<VerificationEmailJob, 'type'>) => {
