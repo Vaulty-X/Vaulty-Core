@@ -59,46 +59,46 @@ const refreshExpiryFromNow = (): Date => {
   return new Date(Date.now() + ms);
 };
 
-/**
- * Creates a new refresh session for a user and returns the signed JWT pair.
- * `familyId` groups rotated tokens so that reuse of an old token can revoke
- * the entire session family.
- */
-private async issueSession(
-  user: { id: string; email: string; role: string; tokenVersion: number },
-  metadata: SessionMetadata,
-  familyId?: string
-): Promise<{ accessToken: string; refreshToken: string }> {
-  const sessionFamilyId = familyId || generateFamilyId();
-  const jti = generateSessionId();
-
-  const tokenPayload = buildTokenPayload({
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    tokenVersion: user.tokenVersion,
-    jti,
-    familyId: sessionFamilyId,
-  });
-
-  const accessToken = generateAccessToken(tokenPayload);
-  const refreshToken = generateRefreshToken(tokenPayload);
-  const tokenHash = hashToken(refreshToken);
-
-  await userRepository.createRefreshSession({
-    userId: user.id,
-    tokenHash,
-    familyId: sessionFamilyId,
-    device: metadata.device ?? null,
-    ipAddress: metadata.ipAddress ?? null,
-    userAgent: metadata.userAgent ?? null,
-    expiresAt: refreshExpiryFromNow(),
-  });
-
-  return { accessToken, refreshToken };
-}
-
 export class AuthService {
+  /**
+   * Creates a new refresh session for a user and returns the signed JWT pair.
+   * `familyId` groups rotated tokens so that reuse of an old token can revoke
+   * the entire session family.
+   */
+  private async issueSession(
+    user: { id: string; email: string; role: string; tokenVersion: number },
+    metadata: SessionMetadata,
+    familyId?: string
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const sessionFamilyId = familyId || generateFamilyId();
+    const jti = generateSessionId();
+
+    const tokenPayload = buildTokenPayload({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+      jti,
+      familyId: sessionFamilyId,
+    });
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+    const tokenHash = hashToken(refreshToken);
+
+    await userRepository.createRefreshSession({
+      userId: user.id,
+      tokenHash,
+      familyId: sessionFamilyId,
+      device: metadata.device ?? null,
+      ipAddress: metadata.ipAddress ?? null,
+      userAgent: metadata.userAgent ?? null,
+      expiresAt: refreshExpiryFromNow(),
+    });
+
+    return { accessToken, refreshToken };
+  }
+
   async register(data: RegisterInput) {
     const existingUser = await userRepository.findByEmail(data.email);
     if (existingUser) {
