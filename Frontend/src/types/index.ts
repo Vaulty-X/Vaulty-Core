@@ -162,3 +162,11 @@ export interface WithdrawalOrder {
 }
 
 export type PaymentOrder = FundingOrder | WithdrawalOrder
+
+// Regulated feature availability — driven by backend config with env-var fallback.
+// All flags default to false so features remain off until explicitly enabled.
+export interface FeatureFlags {
+  lending: boolean
+  borrowing: boolean
+  investments: boolean
+}
