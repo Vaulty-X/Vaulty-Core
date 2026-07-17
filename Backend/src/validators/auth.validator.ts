@@ -16,10 +16,16 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
+  device: z.string().max(255).optional(),
+  ipAddress: z.string().max(64).optional(),
+  userAgent: z.string().max(512).optional(),
 });
 
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
+  device: z.string().max(255).optional(),
+  ipAddress: z.string().max(64).optional(),
+  userAgent: z.string().max(512).optional(),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -44,6 +50,10 @@ export const resendVerificationEmailSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
+export const logoutSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
@@ -51,3 +61,4 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type ResendVerificationEmailInput = z.infer<typeof resendVerificationEmailSchema>;
+export type LogoutInput = z.infer<typeof logoutSchema>;
