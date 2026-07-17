@@ -158,13 +158,11 @@ export class UserRepository {
     await prisma.passwordResetToken.deleteMany({
       where: {
         expiresAt: { lt: now },
-        used: true,
       },
     });
     await prisma.emailVerificationToken.deleteMany({
       where: {
         expiresAt: { lt: now },
-        used: true,
       },
     });
   }
