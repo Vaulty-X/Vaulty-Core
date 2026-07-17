@@ -2,7 +2,6 @@
 /target/
 **/*.rs.bk
 *.pdb
-/ethnum-patch/
 
 # Cargo
 Cargo.lock
