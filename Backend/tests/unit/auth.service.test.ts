@@ -34,7 +34,7 @@ const user = {
   email: 'ada@example.com',
   firstName: 'Ada',
   lastName: 'Lovelace',
-  phoneNumber: null,
+  phoneNumber: null as string | null,
   isEmailVerified: false,
   role: 'USER',
   createdAt: new Date(),
@@ -133,5 +133,89 @@ describe('AuthService token secrecy', () => {
 
     expect(storedHash).toBe(hashToken(queued.token));
     expect(storedHash).not.toBe(queued.token);
+  });
+});
+
+describe('AuthService identity canonicalization', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQueueVerificationEmail.mockResolvedValue({ id: 'email-job-1' });
+  });
+
+  it('normalizes email case/whitespace and phone format before duplicate checks and create', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(null);
+    mockUserRepository.findByPhoneNumber.mockResolvedValue(null);
+    mockUserRepository.create.mockResolvedValue({
+      ...user,
+      email: 'user@example.com',
+      phoneNumber: '+2348012345678',
+    } as never);
+    mockUserRepository.createEmailVerificationToken.mockResolvedValue({} as never);
+
+    await authService.register({
+      email: '  User@Example.COM ',
+      password: 'SecurePass123',
+      phoneNumber: '08012345678',
+    });
+
+    expect(mockUserRepository.findByEmail).toHaveBeenCalledWith('user@example.com');
+    expect(mockUserRepository.findByPhoneNumber).toHaveBeenCalledWith('+2348012345678');
+    expect(mockUserRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'user@example.com',
+        phoneNumber: '+2348012345678',
+      })
+    );
+  });
+
+  it('rejects duplicate registration when email differs only by case', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue({ ...user, email: 'user@example.com' } as never);
+
+    await expect(
+      authService.register({
+        email: 'USER@EXAMPLE.COM',
+        password: 'SecurePass123',
+      })
+    ).rejects.toThrow(new AppError('User with this email already exists', 409));
+
+    expect(mockUserRepository.findByEmail).toHaveBeenCalledWith('user@example.com');
+    expect(mockUserRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate registration when phone differs only by Nigerian format', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(null);
+    mockUserRepository.findByPhoneNumber.mockResolvedValue({
+      ...user,
+      phoneNumber: '+2348012345678',
+    } as never);
+
+    await expect(
+      authService.register({
+        email: 'other@example.com',
+        password: 'SecurePass123',
+        phoneNumber: '08012345678',
+      })
+    ).rejects.toThrow(new AppError('User with this phone number already exists', 409));
+
+    expect(mockUserRepository.findByPhoneNumber).toHaveBeenCalledWith('+2348012345678');
+    expect(mockUserRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('logs in successfully when email case/whitespace differs from stored value', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue({
+      ...user,
+      email: 'user@example.com',
+      passwordHash: await import('../../src/utils/crypto').then((m) => m.hashPassword('SecurePass123')),
+    } as never);
+    mockUserRepository.update.mockResolvedValue(user as never);
+
+    const result = await authService.login({
+      email: '  USER@EXAMPLE.COM ',
+      password: 'SecurePass123',
+    });
+
+    expect(mockUserRepository.findByEmail).toHaveBeenCalledWith('user@example.com');
+    expect(result.accessToken).toBeTruthy();
+    expect(result.user.email).toBe('user@example.com');
   });
 });

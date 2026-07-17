@@ -336,12 +336,37 @@ Create a new user account.
 ```
 
 **Validation:**
-- Email must be valid and unique
+- Email must be valid and unique (stored trimmed + lowercased)
 - Password must be at least 8 characters with uppercase, lowercase, and number
-- Phone number must be at least 10 digits (optional)
+- Phone number is optional; when provided it must be a valid Nigerian number and is stored in E.164 (`+234XXXXXXXXXX`)
 - Verification links are delivered by email. Raw verification secrets are never returned in API responses.
 
 ---
+
+## Identity Canonicalization
+
+Auth identity fields are normalized before lookup and persistence so case, whitespace, and phone-format variants cannot create duplicate accounts.
+
+| Field | Canonical form | Accepted input examples | Stored as |
+|-------|----------------|-------------------------|-----------|
+| `email` | Trim whitespace, lowercase | `User@Example.com`, ` user@example.com ` | `user@example.com` |
+| `phoneNumber` | Nigerian E.164 | `08012345678`, `2348012345678`, `+2348012345678` | `+2348012345678` |
+
+Normalization runs in:
+
+- Zod auth validators (request transform)
+- `AuthService` (defense in depth on register/login/forgot/resend)
+- `UserRepository` find/create helpers
+
+### Existing data
+
+Apply the data migration to backfill rows created before this change:
+
+```bash
+npx prisma db execute --file prisma/sql/normalize_identity_fields.sql
+```
+
+The script lowercases emails, rewrites Nigerian phones to E.164, keeps the oldest row on collisions, tags newer email duplicates with `+dup.<id>`, and clears newer duplicate phone values.
 
 ## Login
 
