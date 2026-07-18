@@ -1,6 +1,5 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, Address, Env};
-use shared::events::LoanIssued;
 
 /// Lending contract for managing lending pools and interest
 /// Phase 3: Will implement lending pool creation, deposits, interest calculation

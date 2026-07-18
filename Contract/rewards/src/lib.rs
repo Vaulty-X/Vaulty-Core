@@ -1,6 +1,5 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, Address, Env};
-use shared::events::RewardGranted;
 
 /// Rewards contract for distributing protocol rewards
 /// Phase 2: Will implement reward distribution, claiming, streak bonuses
