@@ -18,6 +18,7 @@ import {
 } from '../utils/jwt';
 import { queuePasswordResetEmail, queueVerificationEmail } from '../queues';
 import { parseRefreshTokenExpiryMs } from '../config';
+import { normalizeEmail, normalizePhoneNumber } from '../utils/identity';
 import type {
   RegisterInput,
   LoginInput,
@@ -98,13 +99,22 @@ export class AuthService {
   }
 
   async register(data: RegisterInput) {
-    const existingUser = await userRepository.findByEmail(data.email);
+    const email = normalizeEmail(data.email);
+    const phoneNumber = data.phoneNumber
+      ? normalizePhoneNumber(data.phoneNumber) ?? undefined
+      : undefined;
+
+    if (data.phoneNumber && !phoneNumber) {
+      throw new AppError('Invalid phone number', 400);
+    }
+
+    const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       throw new AppError('User with this email already exists', 409);
     }
 
-    if (data.phoneNumber) {
-      const existingPhone = await userRepository.findByPhoneNumber(data.phoneNumber);
+    if (phoneNumber) {
+      const existingPhone = await userRepository.findByPhoneNumber(phoneNumber);
       if (existingPhone) {
         throw new AppError('User with this phone number already exists', 409);
       }
@@ -113,11 +123,11 @@ export class AuthService {
     const passwordHash = await hashPassword(data.password);
 
     const user = await userRepository.create({
-      email: data.email,
+      email,
       passwordHash,
       firstName: data.firstName,
       lastName: data.lastName,
-      phoneNumber: data.phoneNumber,
+      phoneNumber,
     });
 
     const verificationToken = generateSecureToken();
@@ -136,7 +146,7 @@ export class AuthService {
   }
 
   async login(data: LoginInput) {
-    const user = await userRepository.findByEmail(data.email);
+    const user = await userRepository.findByEmail(normalizeEmail(data.email));
     if (!user) {
       throw new AppError('Invalid email or password', 401);
     }
@@ -240,7 +250,7 @@ export class AuthService {
   }
 
   async forgotPassword(data: ForgotPasswordInput) {
-    const user = await userRepository.findByEmail(data.email);
+    const user = await userRepository.findByEmail(normalizeEmail(data.email));
     if (!user) {
       return { message: 'If the email exists, a reset link has been sent' };
     }
@@ -291,7 +301,7 @@ export class AuthService {
   }
 
   async resendVerificationEmail(data: ResendVerificationEmailInput) {
-    const user = await userRepository.findByEmail(data.email);
+    const user = await userRepository.findByEmail(normalizeEmail(data.email));
     const message = 'If the email exists and is unverified, a verification link has been sent';
 
     if (!user || user.isEmailVerified) {

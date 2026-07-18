@@ -14,7 +14,8 @@ const formatZodIssue = (issue: ZodIssue): ValidationErrorDetail => ({
 export const validate = (schema: ZodSchema) => {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
-      schema.parse(req.body);
+      // Assign parsed/transformed output so email/phone canonicalization reaches controllers
+      req.body = schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof ZodError) {

@@ -95,10 +95,12 @@ enum VaultType {
 
 model User {
   id                String    @id @default(cuid())
+  /// Canonical: trimmed + lowercased before persistence (see Backend/README Identity Canonicalization)
   email             String    @unique
   passwordHash      String
   firstName         String?
   lastName          String?
+  /// Canonical: Nigerian E.164 (+234XXXXXXXXXX). See Backend/README Identity Canonicalization
   phoneNumber       String?   @unique
   isEmailVerified   Boolean   @default(false)
   emailVerifiedAt   DateTime?

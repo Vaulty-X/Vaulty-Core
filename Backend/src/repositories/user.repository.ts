@@ -1,4 +1,5 @@
 import { prisma } from '../database';
+import { normalizeEmail, normalizePhoneNumber } from '../utils/identity';
 
 export class UserRepository {
   async findById(id: string) {
@@ -23,13 +24,14 @@ export class UserRepository {
 
   async findByEmail(email: string) {
     return prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizeEmail(email) },
     });
   }
 
   async findByPhoneNumber(phoneNumber: string) {
+    const normalized = normalizePhoneNumber(phoneNumber) ?? phoneNumber;
     return prisma.user.findUnique({
-      where: { phoneNumber },
+      where: { phoneNumber: normalized },
     });
   }
 
@@ -40,8 +42,16 @@ export class UserRepository {
     lastName?: string;
     phoneNumber?: string;
   }) {
+    const phoneNumber = data.phoneNumber
+      ? normalizePhoneNumber(data.phoneNumber) ?? data.phoneNumber
+      : undefined;
+
     return prisma.user.create({
-      data,
+      data: {
+        ...data,
+        email: normalizeEmail(data.email),
+        phoneNumber,
+      },
       select: {
         id: true,
         email: true,

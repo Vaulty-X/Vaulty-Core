@@ -1,7 +1,31 @@
 import { z } from 'zod';
+import { normalizeEmail, normalizePhoneNumber } from '../utils/identity';
+
+const emailField = z
+  .string()
+  .trim()
+  .email('Invalid email address')
+  .transform((value) => normalizeEmail(value));
+
+const phoneNumberField = z
+  .string()
+  .trim()
+  .min(1, 'Phone number is required')
+  .transform((value, ctx) => {
+    const normalized = normalizePhoneNumber(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'Invalid phone number. Use Nigerian local (08012345678) or E.164 (+2348012345678) format.',
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
 
 export const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: emailField,
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -10,11 +34,11 @@ export const registerSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
   firstName: z.string().min(1, 'First name is required').optional(),
   lastName: z.string().min(1, 'Last name is required').optional(),
-  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits').optional(),
+  phoneNumber: phoneNumberField.optional(),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: emailField,
   password: z.string().min(1, 'Password is required'),
   device: z.string().max(255).optional(),
   ipAddress: z.string().max(64).optional(),
@@ -29,7 +53,7 @@ export const refreshTokenSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: emailField,
 });
 
 export const resetPasswordSchema = z.object({
@@ -47,7 +71,7 @@ export const verifyEmailSchema = z.object({
 });
 
 export const resendVerificationEmailSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: emailField,
 });
 
 export const logoutSchema = z.object({
