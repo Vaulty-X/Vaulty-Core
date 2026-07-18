@@ -165,6 +165,9 @@ export class AuthService {
 
     const { passwordHash, ...userWithoutPassword } = user;
 
+    // Asynchronously cleanup expired tokens
+    userRepository.cleanupExpiredTokens().catch(console.error);
+
     return {
       user: userWithoutPassword,
       accessToken: tokens.accessToken,
