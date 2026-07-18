@@ -1,6 +1,5 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, Address, Env};
-use shared::events::LoanRepaid;
 
 /// Borrowing contract for managing collateralized loans
 /// Phase 3: Will implement borrowing against collateral, liquidation
