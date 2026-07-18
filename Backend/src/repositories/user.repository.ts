@@ -166,6 +166,113 @@ export class UserRepository {
       },
     });
   }
+
+  // --- Refresh sessions ---
+
+  async createRefreshSession(data: {
+    userId: string;
+    tokenHash: string;
+    familyId: string;
+    device?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    expiresAt: Date;
+  }) {
+    return prisma.refreshSession.create({
+      data: {
+        userId: data.userId,
+        tokenHash: data.tokenHash,
+        familyId: data.familyId,
+        device: data.device,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        expiresAt: data.expiresAt,
+      },
+    });
+  }
+
+  async findRefreshSessionByTokenHash(tokenHash: string) {
+    return prisma.refreshSession.findUnique({
+      where: { tokenHash },
+    });
+  }
+
+  async revokeRefreshSession(tokenHash: string, reason: string) {
+    return prisma.refreshSession.updateMany({
+      where: {
+        tokenHash,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: reason as any,
+      },
+    });
+  }
+
+  async revokeRefreshSessionFamily(familyId: string, reason: string, excludeTokenHash?: string) {
+    return prisma.refreshSession.updateMany({
+      where: {
+        familyId,
+        revokedAt: null,
+        ...(excludeTokenHash ? { tokenHash: { not: excludeTokenHash } } : {}),
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: reason as any,
+      },
+    });
+  }
+
+  async revokeAllUserRefreshSessions(userId: string, reason: string) {
+    return prisma.refreshSession.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: reason as any,
+      },
+    });
+  }
+
+  async revokeRefreshSessionById(id: string, userId: string, reason: string) {
+    return prisma.refreshSession.updateMany({
+      where: {
+        id,
+        userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: reason as any,
+      },
+    });
+  }
+
+  async expireInactiveRefreshSessions(before: Date) {
+    return prisma.refreshSession.updateMany({
+      where: {
+        expiresAt: { lt: before },
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+        revocationReason: 'EXPIRED',
+      },
+    });
+  }
+
+  async countActiveRefreshSessions(userId: string) {
+    return prisma.refreshSession.count({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

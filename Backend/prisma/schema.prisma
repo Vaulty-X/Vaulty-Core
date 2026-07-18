@@ -15,6 +15,57 @@ enum UserRole {
   ADMIN
 }
 
+enum SessionRevocationReason {
+  LOGOUT
+  LOGOUT_ALL
+  REUSE_DETECTED
+  PASSWORD_RESET
+  EXPIRED
+  ADMIN_REVOKED
+}
+
+enum PaymentDirection {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  PROCESSING
+  REQUIRES_ACTION
+  COMPLETED
+  FAILED
+  REVERSED
+  CANCELLED
+}
+
+enum PaymentProviderType {
+  PAYSTACK
+  FLUTTERWAVE
+  STRIPE
+  ANCHOR
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CARD
+}
+
+enum AuditAction {
+  CREATED
+  INITIATED
+  INSTRUCTIONS_SENT
+  PROVIDER_CALLBACK
+  CONFIRMED
+  SETTLED
+  FAILED
+  REVERSED
+  RETRY
+  CANCELLED
+}
+
 enum TransactionStatus {
   PENDING
   COMPLETED
@@ -61,9 +112,11 @@ model User {
   wallets           Wallet[]
   savingsVaults     SavingsVault[]
   transactions      Transaction[]
+  payments          Payment[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
-  
+  refreshSessions       RefreshSession[]
+
   @@map("users")
 }
 
@@ -128,6 +181,67 @@ model Transaction {
   @@map("transactions")
 }
 
+model Payment {
+  id                String            @id @default(cuid())
+  userId            String
+  direction         PaymentDirection
+  status            PaymentStatus     @default(INITIATED)
+  amount            String
+  asset             String            @default("NGN")
+  fee               String            @default("0")
+  providerReference String?           @unique
+  idempotencyKey    String            @unique
+  method            PaymentMethod
+  provider          PaymentProviderType @default(ANCHOR)
+  bankAccount       String?
+  accountName       String?
+  narration         String?
+  failureReason     String?
+  stellarTransactionHash String?
+  reference         String?           @unique
+  metadata          String?
+  initiatedAt       DateTime?
+  instructionsSentAt DateTime?
+  confirmedAt       DateTime?
+  settledAt         DateTime?
+  failedAt          DateTime?
+  reversedAt        DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs         PaymentAuditLog[]
+
+  @@index([userId])
+  @@index([idempotencyKey])
+  @@index([providerReference])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model PaymentAuditLog {
+  id                String        @id @default(cuid())
+  paymentId         String
+  action            AuditAction
+  oldStatus         PaymentStatus?
+  newStatus         PaymentStatus?
+  description       String?
+  providerReference String?
+  requestPayload    String?
+  responsePayload   String?
+  createdAt         DateTime      @default(now())
+
+  // Relations
+  payment           Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("payment_audit_logs")
+}
+
 model PasswordResetToken {
   id                String    @id @default(cuid())
   userId            String
@@ -149,11 +263,33 @@ model EmailVerificationToken {
   expiresAt         DateTime
   used              Boolean   @default(false)
   createdAt         DateTime  @default(now())
-  
+
   // Relations
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("email_verification_tokens")
+}
+
+model RefreshSession {
+  id                String                @id @default(cuid())
+  userId            String
+  tokenHash         String                @unique
+  familyId          String
+  device            String?
+  ipAddress         String?
+  userAgent         String?
+  issuedAt          DateTime              @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  revocationReason  SessionRevocationReason?
+
+  // Relations
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 // Placeholder models for future phases

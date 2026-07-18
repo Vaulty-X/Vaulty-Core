@@ -1,5 +1,6 @@
 import { AppError } from '../../src/utils/AppError';
 import { hashToken } from '../../src/utils/crypto';
+import { generateRefreshToken } from '../../src/utils/jwt';
 import { queuePasswordResetEmail, queueVerificationEmail } from '../../src/queues';
 import { userRepository } from '../../src/repositories/user.repository';
 import { authService } from '../../src/services/auth.service';
@@ -17,6 +18,13 @@ jest.mock('../../src/repositories/user.repository', () => ({
     invalidateUnusedEmailVerificationTokens: jest.fn(),
     createPasswordResetToken: jest.fn(),
     consumePasswordResetToken: jest.fn(),
+    createRefreshSession: jest.fn(),
+    findRefreshSessionByTokenHash: jest.fn(),
+    revokeRefreshSession: jest.fn(),
+    revokeRefreshSessionFamily: jest.fn(),
+    revokeAllUserRefreshSessions: jest.fn(),
+    revokeRefreshSessionById: jest.fn(),
+    expireInactiveRefreshSessions: jest.fn(),
   },
 }));
 
@@ -123,5 +131,26 @@ describe('AuthService token secrecy', () => {
 
     expect(storedHash).toBe(hashToken(queued.token));
     expect(storedHash).not.toBe(queued.token);
+  });
+
+  it('rejects logout attempts for sessions that do not belong to the authenticated user', async () => {
+    const rawRefreshToken = generateRefreshToken({
+      userId: 'user-1',
+      email: user.email,
+      role: 'USER',
+      jti: 'session-1',
+    });
+
+    mockUserRepository.findRefreshSessionByTokenHash.mockResolvedValue({
+      id: 'session-1',
+      userId: 'other-user',
+      revokedAt: null,
+    } as never);
+
+    await expect((authService as any).logout('user-1', rawRefreshToken)).rejects.toThrow(
+      new AppError('Session not found', 404)
+    );
+
+    expect(mockUserRepository.revokeRefreshSession).not.toHaveBeenCalled();
   });
 });
