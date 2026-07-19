@@ -81,6 +81,73 @@ enum TransactionType {
   SAVINGS_WITHDRAWAL
 }
 
+enum StellarTransactionStatus {
+  REQUESTED
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  REJECTED
+}
+
+enum StellarSubmissionStatus {
+  REQUESTED
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  REJECTED
+}
+
+// Immutable record of each attempt to submit a signed Stellar transaction to
+// the network. Created before submission (REQUESTED), updated as the chain
+// reconciles the result through a confirmation worker. Never mutated in place
+// beyond status/result fields so the audit trail stays intact.
+model StellarSubmission {
+  id                String                @id @default(cuid())
+  apiTransactionId  String                @unique
+  userId            String
+  idempotencyKey    String                @unique
+  status            StellarSubmissionStatus @default(REQUESTED)
+
+  // The XDR as received from the client. Stored read-only for audit/replay.
+  signedXdr         String
+
+  // Network the submission was validated against (e.g. "TESTNET"/"PUBLIC").
+  networkPassphrase String
+
+  // Optional user-facing references so submissions can be correlated with a
+  // vault or payment row without leaking internal provider details.
+  vaultId           String?
+  paymentId         String?
+
+  // Populated once the transaction is accepted by Horizon.
+  stellarTxHash     String?               @unique
+  ledger            Int?
+
+  // Normalized, safe failure/result summary. Raw provider error bodies are
+  // never persisted here.
+  failureCode       String?
+  failureReason     String?
+
+  // Number of confirmation/reconciliation attempts made by the worker.
+  attempts          Int                   @default(0)
+
+  requestedAt       DateTime              @default(now())
+  submittedAt       DateTime?
+  confirmedAt       DateTime?
+  failedAt          DateTime?
+  rejectedAt       DateTime?
+  updatedAt         DateTime              @updatedAt
+
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([apiTransactionId])
+  @@index([stellarTxHash])
+  @@map("stellar_submissions")
+}
+
 enum VaultStatus {
   ACTIVE
   LOCKED
@@ -114,6 +181,7 @@ model User {
   wallets           Wallet[]
   savingsVaults     SavingsVault[]
   transactions      Transaction[]
+  stellarSubmissions StellarSubmission[]
   payments          Payment[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
