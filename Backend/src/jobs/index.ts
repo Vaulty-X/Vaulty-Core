@@ -2,6 +2,7 @@ import { createWorker, QUEUE_NAMES, queuePaymentProcess } from '../queues';
 import { paymentRepository } from '../repositories/payment.repository';
 import { paymentAuditLogRepository } from '../repositories/payment-audit.repository';
 import { anchorService } from '../services/anchor.service';
+import { transactionService } from '../services/transaction.service';
 
 // Example job processors - to be expanded as needed
 
@@ -106,6 +107,12 @@ export const paymentProcessor = async (job: any) => {
 
 let workerRegistry: Record<string, any> | null = null;
 
+export const confirmationProcessor = async (job: { id?: string; data: { apiTransactionId: string } }) => {
+  const { apiTransactionId } = job.data;
+  console.log('Processing stellar confirmation job:', job.id, { apiTransactionId });
+  await transactionService.reconcile(apiTransactionId);
+};
+
 // Initialize workers (call this in server.ts after Redis is connected)
 export const initializeWorkers = () => {
   if (workerRegistry) {
@@ -116,6 +123,7 @@ export const initializeWorkers = () => {
   const streakWorker = createWorker(QUEUE_NAMES.STREAK_CALCULATION, streakProcessor);
   const emailWorker = createWorker(QUEUE_NAMES.EMAIL, emailProcessor);
   const paymentWorker = createWorker(QUEUE_NAMES.PAYMENT_PROCESSING, paymentProcessor);
+  const confirmationWorker = createWorker(QUEUE_NAMES.STELLAR_CONFIRMATION, confirmationProcessor);
 
   notificationWorker.on('completed', (job) => {
     console.log(`Notification job ${job.id} completed`);
@@ -144,7 +152,21 @@ export const initializeWorkers = () => {
     }
   });
 
-  workerRegistry = { notificationWorker, streakWorker, emailWorker, paymentWorker };
+  confirmationWorker.on('completed', (job) => {
+    console.log(`Stellar confirmation job ${job.id} completed`);
+  });
+
+  confirmationWorker.on('failed', (job, err) => {
+    console.error(`Stellar confirmation job ${job?.id} failed after retries:`, err.message);
+  });
+
+  workerRegistry = {
+    notificationWorker,
+    streakWorker,
+    emailWorker,
+    paymentWorker,
+    confirmationWorker,
+  };
   return workerRegistry;
 };
 

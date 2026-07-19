@@ -75,27 +75,65 @@ export class StellarClient {
   }
 
   /**
-   * Submit a transaction to the Stellar network
+   * Decode a signed transaction from XDR without submitting it. Used to
+   * validate the envelope (operation types, network, signatures) before the
+   * submission pipeline decides whether to broadcast it.
    * @param transactionXDR The signed transaction in XDR format
-   * @returns Transaction result
+   * @returns The decoded transaction (FeeBump or classic)
    */
-  async submitTransaction(transactionXDR: string): Promise<any> {
+  decodeTransaction(transactionXDR: string): StellarSdk.Transaction | StellarSdk.FeeBumpTransaction {
+    return StellarSdk.TransactionBuilder.fromXDR(
+      transactionXDR,
+      this.getNetworkPassphrase()
+    ) as StellarSdk.Transaction | StellarSdk.FeeBumpTransaction;
+  }
+
+  /**
+   * Submit a transaction to the Stellar network. Returns a normalized, safe
+   * result so callers never receive raw provider internals. Network mismatch
+   * and malformed XDR are surfaced as typed errors.
+   * @param transactionXDR The signed transaction in XDR format
+   * @returns Normalized submission result
+   */
+  async submitTransaction(
+    transactionXDR: string
+  ): Promise<{ hash: string; ledger: number; success: boolean }> {
     try {
-      const transaction = StellarSdk.TransactionBuilder.fromXDR(
-        transactionXDR,
-        this.getNetworkPassphrase()
-      );
+      const transaction = this.decodeTransaction(transactionXDR);
+
+      if (transaction.networkPassphrase !== this.getNetworkPassphrase()) {
+        throw new Error('NETWORK_MISMATCH');
+      }
+
       const result = await this.server.submitTransaction(transaction);
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to submit transaction: ${error}`);
+      return {
+        hash: result.hash,
+        ledger: result.ledger,
+        success: true,
+      };
+    } catch (error: any) {
+      // Preserve the normalized failure so the service can record a safe code.
+      if (error?.message === 'NETWORK_MISMATCH') {
+        throw error;
+      }
+
+      // Horizon validation / txBad errors carry result_codes we can surface
+      // safely without exposing the full provider response.
+      const resultCodes = error?.response?.extras?.result_codes;
+      if (resultCodes) {
+        const normalized = new Error('SUBMISSION_REJECTED');
+        (normalized as any).resultCodes = resultCodes;
+        throw normalized;
+      }
+
+      throw new Error(`SUBMISSION_FAILED: ${error?.message ?? 'unknown error'}`);
     }
   }
 
   /**
-   * Get transaction status
-   * @param transactionHash The transaction hash
-   * @returns Transaction details
+   * Fetch the confirmation state of a previously submitted transaction by hash.
+   * @param transactionHash The on-chain transaction hash
+   * @returns The transaction record, or null if not yet found
    */
   async getTransaction(transactionHash: string): Promise<any> {
     try {
@@ -109,7 +147,7 @@ export class StellarClient {
    * Get the network passphrase for signing transactions
    * @returns Network passphrase
    */
-  private getNetworkPassphrase(): string {
+  getNetworkPassphrase(): string {
     return this.network === 'mainnet'
       ? StellarSdk.Networks.PUBLIC
       : StellarSdk.Networks.TESTNET;
