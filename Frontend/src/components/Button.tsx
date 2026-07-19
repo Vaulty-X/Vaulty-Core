@@ -16,7 +16,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     className = '',
     ...props 
   }, ref) => {
-    const baseStyles = 'rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
+    const baseStyles = 'relative rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
     
     const variantStyles = {
       primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
@@ -35,9 +35,29 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
         disabled={disabled || isLoading}
+        aria-busy={isLoading || undefined}
         {...props}
       >
-        {isLoading ? 'Loading...' : children}
+        {/* Always render children so layout stays stable; hide visually when loading */}
+        <span aria-hidden={isLoading || undefined} className={isLoading ? 'invisible' : undefined}>{children}</span>
+
+        {/* Visible loading text, also announced by screen readers via aria-live */}
+        {isLoading && (
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="sr-only"
+          >
+            Loading, please wait
+          </span>
+        )}
+
+        {/* Visible replacement text, hidden from AT (aria-busy on the button handles that) */}
+        {isLoading && (
+          <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
+            Loading...
+          </span>
+        )}
       </button>
     )
   }

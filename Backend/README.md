@@ -258,6 +258,42 @@ Each module follows a layered architecture with controllers, services, repositor
 
 ---
 
+# Deployment Modes
+
+The backend now supports separate API and worker deployment modes.
+
+## API mode
+
+Use this when you want the Express server and health endpoint.
+
+```bash
+docker compose up app
+# or locally
+npm run dev
+```
+
+## Worker mode
+
+Use this when you want BullMQ workers to process background jobs such as notifications, streak calculations, emails, and payments.
+
+```bash
+docker compose up worker
+# or locally
+npm run dev -- --worker
+```
+
+## Health and readiness
+
+The health endpoint reports the status of Prisma, Redis, and worker bootstrapping:
+
+```bash
+curl http://localhost:3000/health
+```
+
+A healthy deployment should report `ready: true` and `checks.workers.status: "ok"` when workers have been bootstrapped successfully.
+
+---
+
 # Authentication API
 
 Base URL: `http://localhost:3000/api/v1/auth`
@@ -294,18 +330,43 @@ Create a new user account.
       "isEmailVerified": false,
       "role": "USER",
       "createdAt": "2024-01-01T00:00:00.000Z"
-    },
-    "verificationToken": "abc123..."
+    }
   }
 }
 ```
 
 **Validation:**
-- Email must be valid and unique
+- Email must be valid and unique (stored trimmed + lowercased)
 - Password must be at least 8 characters with uppercase, lowercase, and number
-- Phone number must be at least 10 digits (optional)
+- Phone number is optional; when provided it must be a valid Nigerian number and is stored in E.164 (`+234XXXXXXXXXX`)
+- Verification links are delivered by email. Raw verification secrets are never returned in API responses.
 
 ---
+
+## Identity Canonicalization
+
+Auth identity fields are normalized before lookup and persistence so case, whitespace, and phone-format variants cannot create duplicate accounts.
+
+| Field | Canonical form | Accepted input examples | Stored as |
+|-------|----------------|-------------------------|-----------|
+| `email` | Trim whitespace, lowercase | `User@Example.com`, ` user@example.com ` | `user@example.com` |
+| `phoneNumber` | Nigerian E.164 | `08012345678`, `2348012345678`, `+2348012345678` | `+2348012345678` |
+
+Normalization runs in:
+
+- Zod auth validators (request transform)
+- `AuthService` (defense in depth on register/login/forgot/resend)
+- `UserRepository` find/create helpers
+
+### Existing data
+
+Apply the data migration to backfill rows created before this change:
+
+```bash
+npx prisma db execute --file prisma/sql/normalize_identity_fields.sql
+```
+
+The script lowercases emails, rewrites Nigerian phones to E.164, keeps the oldest row on collisions, tags newer email duplicates with `+dup.<id>`, and clears newer duplicate phone values.
 
 ## Login
 
@@ -439,6 +500,31 @@ Verify user email using verification token.
   "message": "Email has been verified successfully"
 }
 ```
+
+---
+
+## Resend Verification Email
+
+Queue a new verification email for an unverified account.
+
+**Endpoint:** `POST /api/v1/auth/resend-verification-email`
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "If the email exists and is unverified, a verification link has been sent"
+}
+```
+
+Existing unused verification tokens are invalidated before a new email is queued.
 
 ---
 
@@ -731,6 +817,57 @@ npm run test:e2e
 * Document public endpoints.
 * Handle errors consistently.
 * Avoid hardcoded values; use configuration and environment variables.
+
+---
+
+# API Error Envelope
+
+All error responses from the Vaulty Backend follow a standard JSON envelope format:
+
+```json
+{
+  "success": false,
+  "message": "Error description message"
+}
+```
+
+In development environments (`NODE_ENV=development`), the response also includes the error stack trace:
+
+```json
+{
+  "success": false,
+  "message": "Error description message",
+  "stack": "Error stack trace..."
+}
+```
+
+## Validation Errors
+
+When a request payload fails validation, the response HTTP status code is `400 Bad Request` and includes a structured array of validation issues under the `errors` key:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "path": ["email"],
+      "message": "Invalid email address",
+      "code": "invalid_format"
+    },
+    {
+      "path": ["password"],
+      "message": "Password must be at least 8 characters",
+      "code": "too_small"
+    }
+  ]
+}
+```
+
+Each validation error entry contains:
+- `path`: An array of strings/numbers indicating the path to the invalid field (e.g., `["email"]`).
+- `message`: A human-readable description of the validation failure.
+- `code`: A stable, standardized error code representing the validation failure type (e.g., `invalid_type`, `invalid_format`, `too_small`, `too_big`).
 
 ---
 

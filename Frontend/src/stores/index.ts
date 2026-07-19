@@ -9,6 +9,7 @@ import {
   WithdrawalOrder,
   PaymentStatus,
   BankAccount,
+  FeatureFlags,
 } from '@/types'
 
 interface AppState {
@@ -20,6 +21,7 @@ interface AppState {
   selectedBankAccountId: string | null
   fundingOrders: FundingOrder[]
   withdrawalOrders: WithdrawalOrder[]
+  regulatedFeatures: FeatureFlags
 
   setWalletConnected: (publicKey: string, network: 'testnet' | 'mainnet') => void
   setWalletDisconnected: () => void
@@ -41,6 +43,8 @@ interface AppState {
   addWithdrawalOrder: (order: WithdrawalOrder) => void
   updateWithdrawalOrderStatus: (id: string, status: PaymentStatus, failureReason?: string) => void
   removeWithdrawalOrder: (id: string) => void
+
+  setRegulatedFeatures: (flags: FeatureFlags) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -58,6 +62,12 @@ export const useAppStore = create<AppState>()(
       selectedBankAccountId: null,
       fundingOrders: [],
       withdrawalOrders: [],
+      // Default all regulated features to disabled; updated by useFeatureFlags on mount.
+      regulatedFeatures: {
+        lending: false,
+        borrowing: false,
+        investments: false,
+      },
 
       setWalletConnected: (publicKey, network) =>
         set({
@@ -138,6 +148,8 @@ export const useAppStore = create<AppState>()(
             (order) => order.id !== id
           ),
         })),
+
+      setRegulatedFeatures: (flags) => set({ regulatedFeatures: flags }),
     }),
     {
       name: 'vaulty-payments',

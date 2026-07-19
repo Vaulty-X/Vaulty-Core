@@ -207,4 +207,42 @@ describe('ApiClient', () => {
       expect(defaultClient).toBeInstanceOf(FreshClient)
     })
   })
+
+  // -------------------------------------------------------------------------
+  // getFeatureFlags
+  // -------------------------------------------------------------------------
+
+  describe('getFeatureFlags()', () => {
+    it('GETs /config/features and returns the flags object', async () => {
+      const flags = { lending: true, borrowing: false, investments: false }
+      global.fetch = mockFetch({ ok: true, body: flags })
+
+      const result = await client.getFeatureFlags()
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `${BASE_URL}/config/features`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        })
+      )
+      expect(result).toEqual(flags)
+    })
+
+    it('falls back to env-var defaults when the backend returns a non-OK response', async () => {
+      global.fetch = mockFetch({ ok: false, status: 503, statusText: 'Service Unavailable' })
+
+      // With no env vars set, all flags default to false.
+      const result = await client.getFeatureFlags()
+
+      expect(result).toEqual({ lending: false, borrowing: false, investments: false })
+    })
+
+    it('falls back to env-var defaults on a network error', async () => {
+      global.fetch = networkErrorFetch('Connection refused')
+
+      const result = await client.getFeatureFlags()
+
+      expect(result).toEqual({ lending: false, borrowing: false, investments: false })
+    })
+  })
 })

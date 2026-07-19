@@ -18,4 +18,13 @@ redis.on('error', (err) => {
   console.error('❌ Redis connection error:', redactError(err));
 });
 
+export const disconnectRedis = async (): Promise<void> => {
+  if (redis.status === 'ready' || redis.status === 'connect' || redis.status === 'reconnecting') {
+    await redis.quit();
+    return;
+  }
+
+  redis.disconnect();
+};
+
 export { redis };

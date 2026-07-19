@@ -222,3 +222,43 @@ Fiat flows (Nigerian bank deposit/withdrawal) go through the backend's anchor-in
 - Feature modules in `src/features/lending/`, `src/features/borrowing/`, and `src/features/investments/` are structural scaffolds. Keep them **gated by feature flags** (`NEXT_PUBLIC_ENABLE_LENDING` etc.) in production builds until Phase 3.
 - Yield, APY, and interest figures displayed in the UI must be sourced from on-chain contract data once integration is implemented — never hardcode or cache these values on the backend to preserve the "verifiable on-chain" differentiator.
 - Shared types between frontend and backend live in `src/types/` for now. If the API surface grows significantly, consider moving them to a shared `packages/shared-types` workspace.
+
+---
+
+## Regulated Feature Gates
+
+Lending, borrowing, and investment features are gated at both the route and component level. All three default to **disabled** and must be explicitly enabled by the backend or environment.
+
+### How it works
+
+| Layer | File | Behaviour |
+|---|---|---|
+| API | `src/lib/api.ts` — `getFeatureFlags()` | Loads availability from `GET /config/features`. Falls back to env vars on error. |
+| Store | `src/stores/index.ts` — `regulatedFeatures` | Single source of truth. Updated on mount by `useFeatureFlags`. |
+| Hook | `src/hooks/useFeatureFlags.ts` | Calls the API once on mount, writes result to store, returns current flags. |
+| Route pages | `src/app/lending/`, `src/app/borrowing/`, `src/app/investments/` | Call `useFeatureFlags` at the route boundary to trigger the flag load. |
+| Feature components | `src/features/lending/`, `src/features/borrowing/`, `src/features/investments/` | Read `regulatedFeatures` from store; show a compliant unavailability message when the flag is `false`. |
+
+### Compliance rules enforced when a feature is disabled
+
+- No APY, estimated returns, yield projections, or investment performance figures are displayed.
+- Users see a clear, non-misleading message: **"This feature is not yet available in your region."**
+- A secondary note advises that eligibility verification or compliance review is required.
+
+### Enabling a feature
+
+**Via environment variable** (local development / CI without a backend):
+
+```env
+NEXT_PUBLIC_ENABLE_LENDING=true
+NEXT_PUBLIC_ENABLE_BORROWING=true
+NEXT_PUBLIC_ENABLE_INVESTMENTS=true
+```
+
+**Via backend** (production): The backend `GET /config/features` endpoint returns a JSON object:
+
+```json
+{ "lending": true, "borrowing": false, "investments": false }
+```
+
+The frontend prefers the backend response. Env vars are only the fallback.

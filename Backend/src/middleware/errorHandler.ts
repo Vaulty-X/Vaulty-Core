@@ -15,6 +15,12 @@ export const errorHandler = (
     res.status(err.statusCode).json({
       success: false,
       message: redact(err.message),
+      ...(err.errors && {
+        errors: err.errors.map((e) => ({
+          ...e,
+          message: redact(e.message),
+        })),
+      }),
       ...(process.env.NODE_ENV === 'development' && { stack: redact(err.stack || '') }),
     });
     return;

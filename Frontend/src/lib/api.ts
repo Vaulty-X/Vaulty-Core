@@ -3,9 +3,20 @@ import {
   FeeInfo,
   ConversionInfo,
   PaymentStatus,
+  FeatureFlags,
 } from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:8000/api'
+
+// Env-var fallback so the frontend works without a backend connection.
+// Each flag defaults to false (disabled) unless the operator explicitly opts in.
+function envFallbackFlags(): FeatureFlags {
+  return {
+    lending: process.env.NEXT_PUBLIC_ENABLE_LENDING === 'true',
+    borrowing: process.env.NEXT_PUBLIC_ENABLE_BORROWING === 'true',
+    investments: process.env.NEXT_PUBLIC_ENABLE_INVESTMENTS === 'true',
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -126,6 +137,19 @@ export class ApiClient {
     return this.request(`/withdrawals/${withdrawalId}/retry`, {
       method: 'POST',
     })
+  }
+
+  /**
+   * Load regulated feature availability from the backend.
+   * Falls back to environment-variable defaults when the backend is unavailable,
+   * so local development and CI builds work without a running server.
+   */
+  async getFeatureFlags(): Promise<FeatureFlags> {
+    try {
+      return await this.request<FeatureFlags>('/config/features')
+    } catch {
+      return envFallbackFlags()
+    }
   }
 }
 

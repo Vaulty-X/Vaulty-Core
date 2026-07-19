@@ -9,3 +9,6 @@ process.env.REDIS_PASSWORD = '';
 process.env.CORS_ORIGIN = 'http://localhost:3000';
 process.env.STELLAR_NETWORK = 'testnet';
 process.env.STELLAR_HORIZON_URL = 'https://horizon-testnet.stellar.org';
+
+// Identity fields (email/phone) are canonicalized in validators + auth service.
+// Unit tests cover case/format variants without requiring a live DB.

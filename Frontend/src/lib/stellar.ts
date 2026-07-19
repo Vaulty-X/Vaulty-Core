@@ -1,8 +1,11 @@
-import { StellarWallet } from '@stellar/stellar-sdk'
-
 // Stellar wallet connection and transaction utilities
 // This module handles wallet connection and transaction signing
 // All signing happens client-side via the user's wallet
+
+// StellarWallet type is a placeholder for the Stellar-compatible wallet SDK
+// that will be wired up in Phase 1 implementation.
+// eslint-disable-next-line -- @typescript-eslint/no-explicit-any (plugin not installed)
+type StellarWallet = any
 
 export class WalletManager {
   private wallet: StellarWallet | null = null

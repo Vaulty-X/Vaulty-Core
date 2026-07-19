@@ -11,7 +11,6 @@ export class AuthController {
         message: 'Registration successful. Please check your email to verify your account.',
         data: {
           user: result.user,
-          verificationToken: result.verificationToken,
         },
       });
     } catch (error) {
@@ -34,7 +33,11 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await authService.refreshToken(req.body.refreshToken);
+      const result = await authService.refreshToken(req.body.refreshToken, {
+        device: req.body.device,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
       res.status(200).json({
         success: true,
         data: result,
@@ -80,6 +83,18 @@ export class AuthController {
     }
   }
 
+  async resendVerificationEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.resendVerificationEmail(req.body);
+      res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user?.userId;
@@ -91,6 +106,40 @@ export class AuthController {
       res.status(200).json({
         success: true,
         data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        throw new AppError('User not authenticated', 401);
+      }
+
+      const result = await authService.logout(userId, req.body.refreshToken);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logoutAll(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        throw new AppError('User not authenticated', 401);
+      }
+
+      const result = await authService.logoutAll(userId);
+      res.status(200).json({
+        success: true,
+        message: result.message,
       });
     } catch (error) {
       next(error);
