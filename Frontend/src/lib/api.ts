@@ -22,11 +22,18 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode: number,
+    // Raw response body, kept for programmatic use (e.g. structured validation
+    // errors). May include a `stack` field in backend dev responses — callers
+    // must never render `body` directly in the UI, only `message`/`statusCode`.
     public body?: unknown
   ) {
     super(message)
     this.name = 'ApiError'
   }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
 }
 
 export function generateIdempotencyKey(): string {

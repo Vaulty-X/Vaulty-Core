@@ -1,11 +1,13 @@
+'use client';
+
 import { useState } from 'react';
-import { useVault } from '@hooks/useVault';
-import { useWallet } from '@hooks/useWallet';
-import { usePaymentStatus } from '@hooks/usePaymentStatus';
-import { VaultList } from '@features/vaults';
-import { VaultDetail } from '@features/vaults';
-import { CreateVault } from '@features/vaults';
-import { Vault } from '@types';
+import { useVault } from '@/hooks/useVault';
+import { useWallet } from '@/hooks/useWallet';
+import { usePaymentStatus } from '@/hooks/usePaymentStatus';
+import { VaultList } from '@/features/vaults';
+import { VaultDetail } from '@/features/vaults';
+import { CreateVault } from '@/features/vaults';
+import { Vault } from '@/types';
 
 type ViewState = 
   | { type: 'list' }

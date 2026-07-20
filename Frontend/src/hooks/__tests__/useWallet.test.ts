@@ -15,19 +15,29 @@ import { useWallet } from '../useWallet'
 // ---------------------------------------------------------------------------
 
 // Mock the whole stellar module; individual tests override resolve/reject
-jest.mock('@/lib/stellar', () => ({
-  walletManager: {
-    connectWallet: jest.fn(),
-    disconnectWallet: jest.fn(),
-  },
-}))
+jest.mock('@/lib/stellar', () => {
+  class WalletConnectionError extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = 'WalletConnectionError'
+    }
+  }
+
+  return {
+    walletManager: {
+      connectWallet: jest.fn(),
+      disconnectWallet: jest.fn(),
+    },
+    WalletConnectionError,
+  }
+})
 
 // Mock the zustand store so we control wallet state
 jest.mock('@/stores', () => ({
   useAppStore: jest.fn(),
 }))
 
-import { walletManager } from '@/lib/stellar'
+import { walletManager, WalletConnectionError } from '@/lib/stellar'
 import { useAppStore } from '@/stores'
 
 // ---------------------------------------------------------------------------
@@ -104,6 +114,20 @@ describe('useWallet', () => {
 
       expect(result.current.error).toBe('Wallet connection not yet implemented')
       expect(result.current.isConnecting).toBe(false)
+      expect(result.current.isWalletError).toBe(false)
+    })
+
+    it('flags isWalletError when walletManager.connectWallet throws a WalletConnectionError', async () => {
+      mockUseAppStore.mockReturnValue(buildStoreMock())
+      mockConnect.mockRejectedValue(new WalletConnectionError('Wallet connection not yet implemented'))
+
+      const { result } = renderHook(() => useWallet())
+
+      await act(async () => {
+        await result.current.connect()
+      })
+
+      expect(result.current.isWalletError).toBe(true)
     })
 
     it('sets generic error message when a non-Error is thrown', async () => {
@@ -117,6 +141,7 @@ describe('useWallet', () => {
       })
 
       expect(result.current.error).toBe('Failed to connect wallet')
+      expect(result.current.isWalletError).toBe(false)
     })
 
     it('sets isConnecting=true during the async call', async () => {
