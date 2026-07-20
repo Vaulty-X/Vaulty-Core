@@ -2,6 +2,8 @@
 // This module handles wallet connection and transaction signing
 // All signing happens client-side via the user's wallet
 
+import { WalletConnectionError, WalletNotConnectedError } from '@/lib/api'
+
 // StellarWallet type is a placeholder for the Stellar-compatible wallet SDK
 // that will be wired up in Phase 1 implementation.
 // eslint-disable-next-line -- @typescript-eslint/no-explicit-any (plugin not installed)
@@ -15,10 +17,15 @@ export class WalletManager {
       // Initialize wallet connection
       // This will integrate with Stellar-compatible wallets
       // Implementation depends on the specific wallet SDK used
-      throw new Error('Wallet connection not yet implemented')
+      throw new WalletConnectionError('Wallet connection not yet implemented')
     } catch (error) {
+      // Re-wrap unknown errors so callers always receive a WalletConnectionError
+      if (error instanceof WalletConnectionError) throw error
       console.error('Failed to connect wallet:', error)
-      throw error
+      throw new WalletConnectionError(
+        error instanceof Error ? error.message : 'Failed to connect wallet',
+        error
+      )
     }
   }
   
@@ -28,7 +35,7 @@ export class WalletManager {
   
   async signTransaction(transactionXDR: string): Promise<string> {
     if (!this.wallet) {
-      throw new Error('Wallet not connected')
+      throw new WalletNotConnectedError()
     }
     
     try {

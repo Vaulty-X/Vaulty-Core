@@ -26,7 +26,49 @@ export class ApiError extends Error {
   ) {
     super(message)
     this.name = 'ApiError'
+    // Restore prototype chain for instanceof checks across transpilation boundaries
+    Object.setPrototypeOf(this, new.target.prototype)
   }
+}
+
+/**
+ * Thrown when a Stellar wallet fails to establish a connection.
+ * Caught separately by the error boundary to show wallet-specific recovery UI.
+ */
+export class WalletConnectionError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: unknown
+  ) {
+    super(message)
+    this.name = 'WalletConnectionError'
+    Object.setPrototypeOf(this, new.target.prototype)
+  }
+}
+
+/**
+ * Thrown when an operation requires a connected wallet but none is active.
+ */
+export class WalletNotConnectedError extends Error {
+  constructor(message = 'No wallet connected. Please connect your Stellar wallet to continue.') {
+    super(message)
+    this.name = 'WalletNotConnectedError'
+    Object.setPrototypeOf(this, new.target.prototype)
+  }
+}
+
+/** Narrow-check helpers — safe across module boundaries. */
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError || (err instanceof Error && err.name === 'ApiError')
+}
+
+export function isWalletError(err: unknown): err is WalletConnectionError | WalletNotConnectedError {
+  return (
+    err instanceof WalletConnectionError ||
+    err instanceof WalletNotConnectedError ||
+    (err instanceof Error &&
+      (err.name === 'WalletConnectionError' || err.name === 'WalletNotConnectedError'))
+  )
 }
 
 export function generateIdempotencyKey(): string {

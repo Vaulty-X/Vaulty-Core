@@ -24,4 +24,60 @@
   .input-field {
     @apply w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
   }
+
+  /* ─── Error boundary — route-level (error.tsx) ──────────────────────────── */
+
+  .error-boundary-container {
+    @apply flex flex-col items-center justify-center min-h-[60vh] px-4 py-12 text-center;
+  }
+
+  .error-boundary-icon {
+    @apply text-5xl mb-4;
+  }
+
+  .error-boundary-heading {
+    @apply text-2xl font-bold text-slate-900 mb-3;
+  }
+
+  .error-boundary-description {
+    @apply text-slate-600 text-base leading-relaxed max-w-md mb-6;
+  }
+
+  .error-boundary-reference {
+    @apply text-xs text-slate-400 mb-6;
+  }
+
+  .error-boundary-reference code {
+    @apply bg-slate-100 px-1.5 py-0.5 rounded font-mono;
+  }
+
+  .error-boundary-actions {
+    @apply flex flex-col sm:flex-row gap-3 items-center mb-8;
+  }
+
+  .error-boundary-retry-btn {
+    @apply px-6 py-2.5 bg-primary-600 text-white rounded-lg font-semibold
+           hover:bg-primary-700 transition-colors
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-primary-500;
+  }
+
+  .error-boundary-home-link {
+    @apply text-primary-600 underline underline-offset-2 text-sm hover:text-primary-700
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-primary-500 rounded-sm;
+  }
+
+  /* Wallet-specific tip block */
+  .error-boundary-wallet-tips {
+    @apply bg-accent-50 border border-accent-200 rounded-lg p-5 max-w-md text-left;
+  }
+
+  .error-boundary-tips-heading {
+    @apply text-sm font-semibold text-accent-800 mb-2;
+  }
+
+  .error-boundary-tips-list {
+    @apply list-disc list-inside space-y-1 text-sm text-accent-700;
+  }
 }

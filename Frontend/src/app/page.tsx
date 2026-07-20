@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react';
 import { useVault } from '@hooks/useVault';
 import { useWallet } from '@hooks/useWallet';
