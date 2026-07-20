@@ -38,12 +38,25 @@ impl TimeHelper {
         env.ledger().timestamp()
     }
 
-    /// Check if a timestamp is in the past
+    /// Check if a timestamp is in the past or has been reached.
+    ///
+    /// Returns `true` when the current ledger time is **greater than or equal to**
+    /// `timestamp`, meaning that the exact unlock timestamp is treated as
+    /// **unlocked** (not locked). In other words, a vault whose `unlock_time`
+    /// equals the current ledger timestamp is immediately withdrawable.
+    ///
+    /// # Boundary rule
+    /// `now >= timestamp` → unlocked (withdrawal allowed)
+    /// `now <  timestamp` → locked   (withdrawal denied)
     pub fn is_past(env: &Env, timestamp: u64) -> bool {
         TimeHelper::now(env) >= timestamp
     }
 
-    /// Check if a timestamp is in the future
+    /// Check if a timestamp is strictly in the future.
+    ///
+    /// Returns `true` only when the current ledger time is **strictly less than**
+    /// `timestamp`. At the exact unlock timestamp this returns `false`, meaning
+    /// the moment has arrived and the lock is no longer active.
     pub fn is_future(env: &Env, timestamp: u64) -> bool {
         TimeHelper::now(env) < timestamp
     }
