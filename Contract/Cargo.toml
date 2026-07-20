@@ -18,4 +18,4 @@ soroban-sdk = "20.0.0"
 shared = { path = "shared" }
 
 [patch.crates-io]
-ethnum = "1.5.3"
+ethnum = { path = "./ethnum-patch" }
