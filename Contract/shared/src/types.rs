@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN};
+use soroban_sdk::{Address, BytesN, contracttype};
 
 /// Vault status enum representing the current state of a vault
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,21 +11,23 @@ pub enum VaultStatus {
     Closed = 3,
 }
 
-/// Asset identifier for supported tokens in the protocol
+/// Asset identifier using a Soroban token contract address
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[contracttype]
 pub struct Asset {
-    pub code: BytesN<32>,
-    pub issuer: Option<Address>,
+    /// Token contract address
+    pub token: Address,
+    /// Human-readable asset symbol for indexing
+    pub symbol: BytesN<32>,
 }
 
-/// Vault metadata containing lock period and other configuration
+/// Vault metadata containing lock period and token identity
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[contracttype]
 pub struct VaultMetadata {
     pub owner: Address,
     pub asset: Asset,
-    pub lock_period: u64, // in seconds
+    pub lock_period: u64,
     pub created_at: u64,
     pub unlock_time: u64,
     pub status: VaultStatus,
