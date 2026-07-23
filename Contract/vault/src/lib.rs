@@ -149,7 +149,7 @@ impl VaultContract {
 
         // Emit event
         env.events().publish(
-            (vault_id.0, from, amount),
+            (vault_id.0.clone(), from, amount),
             (),
         );
     }
@@ -192,7 +192,7 @@ impl VaultContract {
 
             // Emit unlock event
             env.events().publish(
-                (vault_id.0, metadata.unlock_time),
+                (vault_id.0.clone(), metadata.unlock_time),
                 (),
             );
         }
@@ -212,7 +212,7 @@ impl VaultContract {
 
         // Emit event
         env.events().publish(
-            (vault_id.0, to, amount),
+            (vault_id.0.clone(), to, amount),
             (),
         );
     }
