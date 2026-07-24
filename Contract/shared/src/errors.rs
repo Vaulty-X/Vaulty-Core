@@ -58,4 +58,73 @@ pub enum Error {
 
     /// Invalid parameters - provided parameters are invalid
     InvalidParameters = 18,
+
+    /// Pool not found - the specified lending pool does not exist
+    PoolNotFound = 19,
+
+    /// Pool already exists - a pool for this asset already exists
+    PoolAlreadyExists = 20,
+
+    /// Insufficient liquidity - not enough available liquidity for operation
+    InsufficientLiquidity = 21,
+
+    /// Invalid interest rate - interest rate outside allowed bounds
+    InvalidInterestRate = 22,
+
+    /// Invalid share amount - share amount must be positive
+    InvalidShareAmount = 23,
+
+    /// Pool paused - operation not allowed while pool is paused
+    PoolPaused = 24,
+
+    /// Pool closed - operation not allowed on closed pool
+    PoolClosed = 25,
+
+    /// Zero shares - cannot withdraw zero shares
+    ZeroShares = 26,
+
+    /// Insufficient shares - not enough shares for withdrawal
+    InsufficientShares = 27,
+
+    /// Invalid reserve factor - reserve factor outside allowed bounds
+    InvalidReserveFactor = 28,
+
+    /// Rate limit exceeded - operation rate limit reached
+    RateLimitExceeded = 29,
+
+    /// Emergency stop active - operation blocked due to emergency stop
+    EmergencyStopActive = 30,
+
+    /// Permission denied - insufficient permissions for operation
+    PermissionDenied = 31,
+
+    /// Loan already exists - loan ID already in use
+    LoanAlreadyExists = 32,
+
+    /// Invalid collateral - collateral asset not supported or insufficient
+    InvalidCollateral = 33,
+
+    /// Collateral ratio too low - position undercollateralized
+    CollateralRatioTooLow = 34,
+
+    /// Flash loan not allowed - flash loans disabled for this pool
+    FlashLoanNotAllowed = 35,
+
+    /// Cooldown period not met - operation blocked by cooldown
+    CooldownPeriodNotMet = 36,
+
+    /// Invalid timestamp - timestamp outside acceptable range
+    InvalidTimestampRange = 37,
+
+    /// Contract paused - operation blocked due to paused state
+    ContractPaused = 38,
+
+    /// Reentrancy detected - potential reentrancy attack blocked
+    ReentrancyDetected = 39,
+
+    /// Invalid signature - signature verification failed
+    InvalidSignature = 40,
+
+    /// Expired deadline - operation deadline has passed
+    ExpiredDeadline = 41,
 }

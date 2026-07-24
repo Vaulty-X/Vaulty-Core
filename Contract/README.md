@@ -87,74 +87,101 @@ contracts/
 
 ## 🔒 Vault Contract
 
-Manages user savings vaults.
+Manages user savings vaults with advanced features.
 
 ### Responsibilities
 
-* Create vaults
-* Lock assets
-* Deposit funds
-* Withdraw funds
-* Track balances
+* Create vaults with configurable limits
+* Lock assets with time-based constraints
+* Deposit funds with interest accrual
+* Withdraw funds after lock period
+* Track balances and interest
 * Enforce lock periods
 * Store vault metadata
+* Emergency stop controls
+* Rate limiting for operations
+* Admin permission management
+* User vault tracking
 
 ---
 
 ## 🔥 Streak Contract
 
-Tracks user saving consistency.
+Tracks user saving consistency with advanced gamification.
 
 ### Responsibilities
 
-* Record deposits
-* Calculate streaks
-* Update milestones
-* Reset expired streaks
+* Record deposits with activity types
+* Calculate streaks with configurable windows
+* Update milestones and multipliers
+* Reset expired streaks with grace periods
 * Trigger achievement events
+* Maintain activity history
+* Leaderboard tracking
+* Reward multiplier calculation
+* Rate limiting for updates
+* Admin configuration management
 
 ---
 
 ## 🤝 Lending Contract
 
-Manages decentralized lending pools.
+Manages decentralized lending pools with advanced controls.
 
 ### Responsibilities
 
-* Supply liquidity
-* Borrow assets
-* Calculate interest
-* Repay loans
-* Manage collateral
+* Supply liquidity with share minting
+* Borrow assets from pools
+* Calculate deterministic interest
+* Repay loans with debt updates
+* Manage collateral integration
 * Update pool balances
+* Rate limiting per pool
+* Emergency stop controls
+* Pool status management
+* Admin permission system
+* Interest index tracking
+* Liquidity protection
 
 ---
 
 ## 💳 Borrowing Contract
 
-Allows users to borrow against eligible savings vaults.
+Allows users to borrow against eligible savings vaults with full collateral management.
 
 ### Responsibilities
 
-* Verify collateral
+* Configure collateral parameters
+* Verify collateral eligibility
 * Calculate borrowing limits
-* Issue loans
+* Issue loans with tracking
 * Process repayments
-* Release collateral
+* Add additional collateral
+* Check undercollateralization
+* Liquidate unsafe positions
+* Track user loan history
+* Global loan statistics
+* Interest accrual tracking
 
 ---
 
 ## 🏆 Rewards Contract
 
-Handles user incentives.
+Handles user incentives with advanced distribution logic.
 
 ### Responsibilities
 
+* Initialize reward pools
 * Award achievements
-* Calculate rewards
+* Calculate rewards with bonuses
 * Track milestones
 * Record financial discipline scores
 * Distribute eligible incentives
+* Claim rewards with cooldowns
+* Streak bonus calculation
+* Claim history tracking
+* Rate limiting for claims
+* Admin configuration
 
 ---
 
@@ -164,11 +191,13 @@ The `shared/` directory contains reusable logic across all contracts.
 
 Includes:
 
-* Custom errors
-* Events
+* Custom errors with context
+* Events for protocol actions
 * Storage helpers
 * Utility functions
 * Shared data types
+* Advanced fixed-point math
+* Financial calculation utilities
 
 This avoids duplication and keeps contracts consistent.
 
@@ -217,11 +246,49 @@ Key principles include:
 
 * Explicit authorization checks
 * Input validation
-* Safe arithmetic
+* Safe arithmetic with overflow protection
 * Deterministic state transitions
 * Event emission for important actions
 * Modular architecture
 * Minimal external dependencies
+
+## Advanced Security Features
+
+### Access Control
+- Role-based permission system (Admin, Operator, User)
+- Admin-only functions for critical operations
+- Permission expiration support
+- Granular access control per contract
+
+### Rate Limiting
+- Per-contract operation rate limits
+- Configurable time windows
+- Automatic counter reset
+- Protection against spam attacks
+
+### Emergency Controls
+- Emergency stop functionality across all contracts
+- Admin-triggered protocol pause
+- Reason tracking for emergency stops
+- Controlled recovery procedures
+
+### Input Validation
+- Comprehensive parameter validation
+- Basis point validation for rates
+- Lock period bounds checking
+- Amount positivity checks
+
+### Safe Arithmetic
+- Checked arithmetic operations
+- Overflow/underflow protection
+- Fixed-point math for financial calculations
+- Deterministic interest calculations
+
+### Storage Safety
+- Type-safe storage keys
+- Persistent vs instance storage separation
+- Proper initialization checks
+- State consistency guarantees
 
 ---
 
