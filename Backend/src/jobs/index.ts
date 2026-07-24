@@ -3,6 +3,7 @@ import { paymentRepository } from '../repositories/payment.repository';
 import { paymentAuditLogRepository } from '../repositories/payment-audit.repository';
 import { anchorService } from '../services/anchor.service';
 import { transactionService } from '../services/transaction.service';
+import { vaultService } from '../services/vault.service';
 
 // Example job processors - to be expanded as needed
 
@@ -113,6 +114,12 @@ export const confirmationProcessor = async (job: { id?: string; data: { apiTrans
   await transactionService.reconcile(apiTransactionId);
 };
 
+export const vaultReconciliationProcessor = async (job: { id?: string; data: { vaultTransactionId: string; type: string } }) => {
+  const { vaultTransactionId, type } = job.data;
+  console.log('Processing vault reconciliation job:', job.id, { vaultTransactionId, type });
+  await vaultService.reconcileVaultTransaction(vaultTransactionId);
+};
+
 // Initialize workers (call this in server.ts after Redis is connected)
 export const initializeWorkers = () => {
   if (workerRegistry) {
@@ -124,6 +131,7 @@ export const initializeWorkers = () => {
   const emailWorker = createWorker(QUEUE_NAMES.EMAIL, emailProcessor);
   const paymentWorker = createWorker(QUEUE_NAMES.PAYMENT_PROCESSING, paymentProcessor);
   const confirmationWorker = createWorker(QUEUE_NAMES.STELLAR_CONFIRMATION, confirmationProcessor);
+  const vaultReconciliationWorker = createWorker(QUEUE_NAMES.VAULT_RECONCILIATION, vaultReconciliationProcessor);
 
   notificationWorker.on('completed', (job) => {
     console.log(`Notification job ${job.id} completed`);
@@ -160,12 +168,21 @@ export const initializeWorkers = () => {
     console.error(`Stellar confirmation job ${job?.id} failed after retries:`, err.message);
   });
 
+  vaultReconciliationWorker.on('completed', (job) => {
+    console.log(`Vault reconciliation job ${job.id} completed`);
+  });
+
+  vaultReconciliationWorker.on('failed', (job, err) => {
+    console.error(`Vault reconciliation job ${job?.id} failed after retries:`, err.message);
+  });
+
   workerRegistry = {
     notificationWorker,
     streakWorker,
     emailWorker,
     paymentWorker,
     confirmationWorker,
+    vaultReconciliationWorker,
   };
   return workerRegistry;
 };

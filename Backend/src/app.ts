@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
 import { anchorRouter } from './routes/anchor.routes';
 import { transactionRouter } from './routes/transaction.routes';
+import { vaultRouter } from './routes/vault.routes';
 
 export const createApp = (): Application => {
   const app = express();
@@ -42,8 +43,8 @@ export const createApp = (): Application => {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/anchor', anchorRouter);
   app.use('/api/v1/transactions', transactionRouter);
+  app.use('/api/v1/vaults', vaultRouter);
   // app.use('/api/v1/wallets', walletRouter);
-  // app.use('/api/v1/vaults', vaultRouter);
 
   // 404 handler
   app.use(notFoundHandler);

@@ -87,6 +87,293 @@ Supports:
 * Lock period validation
 * Vault history
 
+### Vault API
+
+Base URL: `http://localhost:3000/api/v1/vaults`
+
+All endpoints require authentication via Bearer token.
+
+#### Create Vault
+
+**Endpoint:** `POST /api/v1/vaults`
+
+**Request Body:**
+```json
+{
+  "name": "My Savings Vault",
+  "description": "Saving for a new laptop",
+  "targetAmount": "5000.00",
+  "lockPeriod": 30,
+  "assetCode": "USDC",
+  "assetIssuer": "G...",
+  "contractAddress": "G...",
+  "onChainVaultId": "onc_vlt_123",
+  "type": "PERSONAL",
+  "goalDescription": "New MacBook Pro",
+  "idempotencyKey": "idem-create-1"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "vault": {
+      "id": "vault_id",
+      "userId": "user_id",
+      "name": "My Savings Vault",
+      "description": "Saving for a new laptop",
+      "targetAmount": "5000.00",
+      "currentAmount": "0.00",
+      "type": "PERSONAL",
+      "status": "ACTIVE",
+      "targetDate": null,
+      "lockPeriod": 30,
+      "interestRate": null,
+      "assetCode": "USDC",
+      "assetIssuer": null,
+      "contractAddress": null,
+      "onChainVaultId": null,
+      "lockedAt": null,
+      "unlocksAt": null,
+      "goalDescription": "New MacBook Pro",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+}
+```
+
+**Validation:**
+- `name` is required, max 100 chars
+- `targetAmount` is a positive decimal string
+- `lockPeriod` is optional positive integer (days), max 3650
+- `assetCode` defaults to `USDC` if omitted
+- `type` defaults to `PERSONAL` if omitted
+- `idempotencyKey` is required, max 64 chars
+
+---
+
+#### List Vaults
+
+**Endpoint:** `GET /api/v1/vaults`
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | integer | 1 | Page number |
+| limit | integer | 20 | Items per page (max 100) |
+| status | enum | optional | ACTIVE, LOCKED, or CLOSED |
+| type | enum | optional | PERSONAL, GROUP, or GOAL_ORIENTED |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "vaults": [ /* vault objects */ ],
+  "pagination": {
+    "total": 3,
+    "page": 1,
+    "limit": 20,
+    "pages": 1
+  }
+}
+```
+
+---
+
+#### Get Vault Detail
+
+**Endpoint:** `GET /api/v1/vaults/:vaultId`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "vault": { /* vault object */ }
+  }
+}
+```
+
+Returns 404 if the vault does not exist or belongs to another user.
+
+---
+
+#### Deposit to Vault
+
+**Endpoint:** `POST /api/v1/vaults/:vaultId/deposit`
+
+**Request Body:**
+```json
+{
+  "amount": "200.00",
+  "description": "Monthly savings",
+  "idempotencyKey": "idem-dep-1"
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "success": true,
+  "data": {
+    "transaction": {
+      "id": "vault_txn_id",
+      "vaultId": "vault_id",
+      "userId": "user_id",
+      "type": "DEPOSIT",
+      "status": "PENDING",
+      "amount": "200.00",
+      "fee": "0",
+      "description": "Monthly savings",
+      "reference": "dep-...",
+      "requestedAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+}
+```
+
+**Important:** Deposits are recorded as `PENDING` and do **not** change `currentAmount` until the corresponding on-chain event is `CONFIRMED`. This prevents the backend from falsely claiming a balance before the Stellar network confirms the transaction.
+
+---
+
+#### Withdraw from Vault
+
+**Endpoint:** `POST /api/v1/vaults/:vaultId/withdraw`
+
+**Request Body:**
+```json
+{
+  "amount": "100.00",
+  "description": "Emergency withdrawal",
+  "idempotencyKey": "idem-wth-1"
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "success": true,
+  "data": {
+    "transaction": { /* pending transaction object */ }
+  }
+}
+```
+
+Withdrawals are blocked when:
+- The vault is closed
+- The vault is locked and `unlocksAt` has not passed
+- The requested amount exceeds the **confirmed** `currentAmount`
+
+---
+
+#### Lock Vault
+
+**Endpoint:** `POST /api/v1/vaults/:vaultId/lock`
+
+**Request Body:**
+```json
+{
+  "lockPeriod": 30
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "vault": {
+      "id": "vault_id",
+      "status": "LOCKED",
+      "lockedAt": "2024-01-01T00:00:00.000Z",
+      "unlocksAt": "2024-01-31T00:00:00.000Z"
+      // ... other fields
+    }
+  }
+}
+```
+
+---
+
+#### Unlock Vault
+
+**Endpoint:** `POST /api/v1/vaults/:vaultId/unlock`
+
+Unlocks a vault whose lock period has expired.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "vault": {
+      "status": "ACTIVE"
+      // ... other fields
+    }
+  }
+}
+```
+
+---
+
+#### Close Vault
+
+**Endpoint:** `POST /api/v1/vaults/:vaultId/close`
+
+Permanently closes a vault. The vault must have a zero balance.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": { "vault": { "status": "CLOSED" } }
+}
+```
+
+---
+
+#### Get Vault Transaction History
+
+**Endpoint:** `GET /api/v1/vaults/:vaultId/history`
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | integer | 1 | Page number |
+| limit | integer | 20 | Items per page (max 100) |
+| status | enum | optional | PENDING, CONFIRMED, FAILED, or CANCELLED |
+| type | enum | optional | DEPOSIT, WITHDRAWAL, TRANSFER, or INTEREST |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "transactions": [ /* transaction history items */ ],
+  "pagination": {
+    "total": 5,
+    "page": 1,
+    "limit": 20,
+    "pages": 1
+  }
+}
+```
+
+---
+
+### Vault Lifecycle and On-Chain Reconciliation
+
+The backend intentionally keeps off-chain vault metadata separate from on-chain confirmation state. A vault's `currentAmount` only reflects amounts from `CONFIRMED` `VaultTransaction` records.
+
+1. **Request:** Client calls deposit or withdraw. Backend creates a `VaultTransaction` with `status: PENDING` and a `VaultEvent` with `status: REQUESTED`.
+2. **Submit:** A background job enqueues the vault action for on-chain processing.
+3. **Reconcile:** The `vault-reconciliation` worker polls for the on-chain event. If confirmed, it updates the `VaultTransaction` to `CONFIRMED` and mutates `currentAmount`. If failed, it marks the transaction as `FAILED`.
+4. **History:** The `/history` endpoint returns stable, paginated records ordered by `requestedAt` descending.
+
+This ensures that no state or balance is declared complete before the Stellar network actually confirms it.
+
 ---
 
 ## Banking Service

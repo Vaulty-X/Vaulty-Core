@@ -186,6 +186,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   refreshSessions       RefreshSession[]
+  vaultTransactions VaultTransaction[]
+  vaultEvents       VaultEvent[]
 
   @@map("users")
 }
@@ -219,11 +221,20 @@ model SavingsVault {
   targetDate        DateTime?
   lockPeriod        Int?        // in days
   interestRate      String?     // percentage
+  assetCode         String      @default("USDC")
+  assetIssuer       String?
+  contractAddress   String?
+  onChainVaultId    String?     @unique
+  lockedAt          DateTime?
+  unlocksAt         DateTime?
+  goalDescription   String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   
   // Relations
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vaultTransactions VaultTransaction[]
+  vaultEvents       VaultEvent[]
   
   @@map("savings_vaults")
 }
@@ -249,6 +260,92 @@ model Transaction {
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("transactions")
+}
+
+enum VaultTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  INTEREST
+}
+
+enum VaultTransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+model VaultTransaction {
+  id                String                @id @default(cuid())
+  vaultId           String
+  userId            String
+  type              VaultTransactionType
+  status            VaultTransactionStatus @default(PENDING)
+  amount            String
+  fee               String                @default("0")
+  description       String?
+  reference         String?               @unique
+  idempotencyKey    String?               @unique
+  stellarTransactionHash String?
+  onChainVaultId    String?
+  fromAddress       String?
+  toAddress         String?
+  failureCode       String?
+  failureReason     String?
+  requestedAt       DateTime              @default(now())
+  confirmedAt       DateTime?
+  failedAt          DateTime?
+  updatedAt         DateTime              @updatedAt
+  
+  // Relations
+  vault             SavingsVault          @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vaultId])
+  @@index([userId])
+  @@index([status])
+  @@index([reference])
+  @@index([idempotencyKey])
+  @@map("vault_transactions")
+}
+
+enum VaultEventType {
+  DEPOSIT
+  WITHDRAWAL
+  LOCK
+  UNLOCK
+  CLOSE
+  CREATED
+}
+
+model VaultEvent {
+  id                String          @id @default(cuid())
+  vaultId           String
+  userId            String
+  eventType         VaultEventType
+  status            StellarSubmissionStatus @default(REQUESTED)
+  transactionHash   String?         @unique
+  ledger            Int?
+  failureCode       String?
+  failureReason     String?
+  attempts          Int             @default(0)
+  payload           String?
+  requestedAt       DateTime        @default(now())
+  submittedAt       DateTime?
+  confirmedAt       DateTime?
+  failedAt          DateTime?
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  vault             SavingsVault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vaultId])
+  @@index([userId])
+  @@index([status])
+  @@index([transactionHash])
+  @@map("vault_events")
 }
 
 model Payment {
