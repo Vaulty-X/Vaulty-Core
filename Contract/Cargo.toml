@@ -14,5 +14,5 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-soroban-sdk = "20.0.0"
+soroban-sdk = "20.5.0"
 shared = { path = "shared" }
